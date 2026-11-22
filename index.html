@@ -342,7 +342,7 @@ body {
         <li><b>만나기</b>어울리는 굿즈와 4컷 만화</li>
       </ol>
       <button id="btnStart" class="btn btn-primary btn-big" type="button">손금 찍으러 가기</button>
-      <p id="chanceLine" class="chance" aria-live="polite">첫 판독은 무료예요.</p>
+      <p id="chanceLine" class="chance" aria-live="polite">몇 번이든 무료로 볼 수 있어요.</p>
       <button id="btnLast" class="btn btn-ghost" type="button" hidden>지난 결과 다시 보기</button>
       <p class="fine">재미로 보는 손금이에요. 사진은 이 기기 안에서만 분석되고 어디에도 전송되지 않습니다.</p>
       <p id="modeLine" class="fine mode" hidden></p>
@@ -547,6 +547,7 @@ body {
 
 const CONFIG = {
   GAME_TITLE: '손금은 이미 알고 있다.',
+  GATE_ENABLED: false,     // false: 횟수 제한 없이 누구나 무료. true 로 바꾸면 "친구가 접속해야 다시 하기" 규칙이 다시 켜진다
   FIRST_PLAY_FREE: true,   // 첫 1회는 무료
   DAILY_BONUS_LIMIT: 1,    // 공유로 얻은 "다시 하기"는 하루에 몇 번까지 쓸 수 있는지
   API_BASE: 'api',         // server.js 와 같은 주소에서 서비스할 때의 API 경로
@@ -3486,8 +3487,10 @@ const Chances = (function () {
     } finally { clearTimeout(timer); }
   }
 
+  const OPEN = { freeUsed: false, credits: 0, usedToday: 0, limit: 0, canPlay: true, why: 'open' };
   async function init() {
     S.sandbox = !!(window.claude && typeof window.claude.use === 'function');
+    if (!CONFIG.GATE_ENABLED) { S.mode = 'open'; S.st = OPEN; return S; }      // 제한 없음: 서버도 초대 코드도 쓰지 않는다
     S.uid = Store.get('uid', null);
     if (!S.uid) { S.uid = rid(20); Store.set('uid', S.uid); }
     // 공유 링크로 들어왔는지: ?r=코드 (또는 #r-코드)
@@ -3513,6 +3516,7 @@ const Chances = (function () {
 
   /* 판독 1회를 쓴다 (또렷한 결과가 나왔을 때만 호출) */
   async function consume() {
+    if (S.mode === 'open') return true;
     if (S.mode === 'server') {
       try { const j = await api('play', { uid: S.uid }); S.st = j.state; return j.ok; } catch (e) { return true; }
     }
@@ -3524,6 +3528,7 @@ const Chances = (function () {
     return true;
   }
   async function refresh() {
+    if (S.mode === 'open') return S.st;
     if (S.mode === 'server') {
       try { const j = await api('state', { uid: S.uid }); S.st = j.state; } catch (e) { /* 다음에 다시 */ }
     } else S.st = view(localData());
@@ -3540,6 +3545,7 @@ const Chances = (function () {
   }
   function shareLink() {
     if (S.sandbox || !/^https?:$/.test(location.protocol)) return null;
+    if (S.mode === 'open') return location.origin + location.pathname;
     return location.origin + location.pathname + '?r=' + S.code;
   }
 
@@ -3618,6 +3624,7 @@ const App = (function () {
     setTimeout(() => requestAnimationFrame(tick), 500);
   }
   function chanceText(st) {
+    if (st.why === 'open') return '몇 번이든 무료로 볼 수 있어요.';
     if (st.why === 'free') return '첫 판독은 무료예요.';
     if (st.why === 'bonus') return '친구가 접속해서 다시 보기 기회가 생겼어요!';
     if (st.why === 'daily_limit') return '오늘의 다시 보기는 이미 썼어요. 내일 또 볼 수 있어요.';
@@ -4177,6 +4184,7 @@ const App = (function () {
   }
   function updateAgain() {
     const st = Chances.S.st;
+    el.againLine.hidden = st.why === 'open';
     el.againLine.textContent = st.canPlay ? '다시 보기 기회가 있어요.' : '친구가 내 링크로 실제 접속하면 다시 볼 수 있어요. (하루 1번)';
   }
   function makeCard() {
