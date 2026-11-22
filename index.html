@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>손금은 이미 알고 있다.</title>
 <meta name="description" content="손바닥을 찍으면 손금을 읽어 자동차부터 시계, 가전, 사는 곳까지 당신과 어울리는 것을 알려주는 게임">
 <meta property="og:type" content="website">
@@ -146,7 +146,7 @@ body {
 .bar-title { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 24px; line-height: 1.2; text-wrap: balance; }
 .center { text-align: center; }
 .stage {
-  position: relative; width: 100%; aspect-ratio: 3 / 4; overflow: hidden;
+  position: relative; width: 100%; aspect-ratio: 5 / 7; overflow: hidden;
   background: #14100C; border: 4px solid var(--ink); border-radius: 18px; box-shadow: 5px 5px 0 var(--cinnabar);
 }
 .stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -287,16 +287,40 @@ body {
   background: var(--ink); color: var(--rice); font-family: var(--font-ui); font-size: 15px; text-align: center;
 }
 
-@media (min-width: 620px) {
-  .wrap { padding: 28px 16px; }
-  .talisman { max-width: 580px; padding: 38px 36px 42px; outline-offset: -12px; }
-  .comic { grid-template-columns: 1fr 1fr; }
-  .trace { grid-template-columns: 230px 1fr; align-items: center; }
-  .stage:not(.scanstage) { max-width: 420px; align-self: center; }
+/* 화면 비율: 갤럭시 S25(9 : 19.5, 360×780) 한 장.
+ * 휴대폰에서는 화면을 가득 채우고, 더 넓은 화면(PC·태블릿)에서는 같은 비율의 틀을 가운데에 띄워 그 안에서 스크롤한다. */
+.wrap { min-height: 100dvh; padding: 0; }
+.talisman { max-width: none; min-height: 100dvh; border-width: 3px; padding: 22px 16px 26px; }
+@media (min-width: 500px) {
+  body { background-color: #1A1410; background-image: radial-gradient(rgba(242, 194, 48, .16) 1.5px, transparent 1.7px); }
+  .wrap { height: 100dvh; min-height: 0; align-items: center; padding: 12px; }
+  .talisman {
+    height: min(calc(100dvh - 24px), 975px); min-height: 0; width: auto; aspect-ratio: 9 / 19.5;
+    overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; border-radius: 26px; outline: none;
+    box-shadow: 0 0 0 6px #000, 0 18px 50px rgba(0, 0, 0, .5);
+  }
+  .toast { bottom: 34px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .scanbar { display: none; animation: none; }
   .btn, .shutter { transition: none; }
+}
+
+/* 첫 화면은 S25 한 화면 안에 시작 버튼까지 들어오게 줄인다 */
+#s-intro { gap: 11px; }
+#s-intro .eyebrow { font-size: 14px; }
+#s-intro .seal { width: 30px; height: 40px; font-size: 14px; }
+#s-intro .title { font-size: clamp(40px, 12.6vw, 54px); }
+#s-intro .lede { font-size: 15px; line-height: 1.5; }
+#s-intro .introart { width: auto; height: 23dvh; min-height: 120px; max-height: 240px; aspect-ratio: 1; }
+#s-intro .steps { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+#s-intro .steps li { justify-content: center; gap: 6px; padding: 6px 4px; font-size: 0; }
+#s-intro .steps li::before { width: 22px; height: 22px; font-size: 14px; }
+#s-intro .steps b { min-width: 0; font-size: 15px; }
+#s-intro .fine { font-size: 12px; }
+@media (min-width: 500px) {
+  #s-intro .title { font-size: clamp(40px, 5.6dvh, 54px); }
+  #s-intro .introart { height: 22dvh; }
 }
 
 </style>
@@ -377,10 +401,10 @@ body {
         </ul>
         <button id="btnCam" class="btn btn-primary btn-big" type="button">카메라로 찍기</button>
         <label class="btn btn-ghost btn-big" for="filePick">앨범에서 고르기</label>
-        <p class="fine">사진에서 손바닥을 알아서 찾아 읽습니다.</p>
+        <p class="fine">이 화면에서는 손 모양 틀을 띄울 수 없어, 사진에서 손바닥을 알아서 찾아 읽습니다.</p>
       </div>
 
-      <!-- PC 웹캠으로 찍을 때, 그리고 자동으로 손을 못 찾아 직접 맞출 때만 쓰는 화면 -->
+      <!-- 화면 안 카메라(손 모양 틀과 함께)와, 자동으로 손을 못 찾았을 때의 직접 맞추기 -->
       <div id="stageBox" class="stagebox" hidden>
         <div id="stage" class="stage">
           <video id="video" playsinline muted autoplay></video>
@@ -389,9 +413,9 @@ body {
           <p id="hint" class="hint" aria-live="polite"></p>
         </div>
         <div id="liveControls" class="controls">
-          <button id="btnCancelCam" class="btn btn-ghost" type="button">취소</button>
+          <button id="btnCancelCam" class="btn btn-ghost" type="button">앨범</button>
           <button id="btnShoot" class="shutter" type="button" aria-label="촬영"><span></span></button>
-          <button id="btnSwitch" class="btn btn-ghost" type="button">카메라 전환</button>
+          <button id="btnSwitch" class="btn btn-ghost" type="button">전환</button>
         </div>
         <div id="photoControls" class="controls stack" hidden>
           <div class="zoomrow">
@@ -3649,11 +3673,10 @@ const App = (function () {
   }
 
   /* ---------- 촬영 화면 ----------
-   * 보이는 것은 두 가지뿐: "카메라로 찍기"와 "앨범에서 고르기". 손 모양 틀(가이드)은 보여 주지 않고,
-   * 받은 사진에서 손바닥을 자동으로 찾아 읽는다.
-   *   choose : 두 버튼
-   *   live   : 휴대폰 카메라 앱이 없는 PC에서, 화면 안에 웹캠을 띄워 찍기
-   *   adjust : 자동으로 손을 못 찾았을 때만 여는 "직접 맞추기"(사진 위에 손 모양 틀)
+   * 촬영 화면에 들어오면 곧바로 화면 안 카메라를 켜고, 그 위에 손 모양 틀(가이드)을 겹쳐 보여 준다.
+   *   live   : 화면 안 카메라 + 손 모양 틀 (휴대폰·PC 공통, https 에서만)
+   *   choose : 화면 안 카메라를 쓸 수 없을 때의 두 버튼(기본 카메라로 찍기 / 앨범에서 고르기)
+   *   adjust : 자동으로 손을 못 찾았을 때 여는 "직접 맞추기"(사진 위에 손 모양 틀)
    */
   function layoutStage() {
     const w = el.stage.clientWidth, h = el.stage.clientHeight;
@@ -3667,9 +3690,11 @@ const App = (function () {
     paintGuide();
   }
   function paintGuide() {
-    if (ST.mode !== 'adjust' || !ST.box || !el.guide.width) return;
+    if (ST.mode === 'choose' || !ST.box || !el.guide.width) return;
     const k = el.guide.width / el.stage.clientWidth, b = ST.box;
-    Draw.drawGuide(el.guide, { x: b.x * k, y: b.y * k, w: b.w * k, h: b.h * k }, ST.guideState, ST.guideFlip);
+    // 카메라 화면이 거울처럼 보일 때는 틀도 좌우를 바꿔 그린다
+    const flip = ST.mode === 'live' ? (ST.profile.hand === 'left') !== ST.mirrored : ST.guideFlip;
+    Draw.drawGuide(el.guide, { x: b.x * k, y: b.y * k, w: b.w * k, h: b.h * k }, ST.guideState, flip);
   }
   /* 틀의 엄지 방향: 사진에서 찾은 방향이 있으면 그대로, 없으면 고른 손대로 */
   function refreshFlip() {
@@ -3688,22 +3713,64 @@ const App = (function () {
     el.stageBox.hidden = mode === 'choose';
     el.video.hidden = mode !== 'live';
     el.photo.hidden = mode !== 'adjust';
-    el.guide.hidden = mode !== 'adjust';
+    el.guide.hidden = mode === 'choose';
     el.liveControls.hidden = mode !== 'live';
     el.photoControls.hidden = mode !== 'adjust';
     el.stage.classList.toggle('photo', mode === 'adjust');
-    el.capTitle.textContent = mode === 'adjust' ? '손 모양 틀에 손바닥을 맞춰주세요' : mode === 'live' ? '손바닥을 크게 비춰주세요' : '손바닥 사진을 준비해 주세요';
-    if (mode === 'live') setHint('손바닥을 쫙 펴서 화면에 크게');
+    el.capTitle.textContent = mode === 'adjust' ? '손 모양 틀에 손바닥을 맞춰주세요' : mode === 'live' ? '손 모양 틀에 손바닥을 맞춰주세요' : '손바닥 사진을 준비해 주세요';
+    if (mode === 'live') { ST.guideState = 'idle'; setHint(liveHint('none')); }
+    if (mode !== 'live') stopAlign();
     if (mode === 'adjust') setHint('사진을 끌고 크기를 맞춰 틀 안에 넣어주세요');
   }
+  const handName = () => (ST.profile.hand === 'left' ? '왼손' : '오른손');
+  function liveHint(h) {
+    return h === 'ok' ? '좋아요! 지금 찍으세요' : h === 'dark' ? '너무 어두워요. 밝은 곳에서'
+      : h === 'thumb' ? `엄지 방향이 달라요. ${handName()} 손바닥이 맞나요?` : h === 'far' ? '손이 틀보다 커요. 조금 멀리'
+      : `${handName()} 손바닥을 틀에 맞춰주세요`;
+  }
+  /* 틀 안의 영상을 원본(거울 반전 전) 좌표로 옮긴다 */
+  function liveBox() {
+    const v = el.video, b = ST.box, sw = el.stage.clientWidth, sh = el.stage.clientHeight;
+    if (!b || !v.videoWidth || !sw) return null;
+    const k = Math.max(sw / v.videoWidth, sh / v.videoHeight), dx = (sw - v.videoWidth * k) / 2, dy = (sh - v.videoHeight * k) / 2;
+    const x = ST.mirrored ? v.videoWidth - (b.x + b.w - dx) / k : (b.x - dx) / k;
+    return { x, y: (b.y - dy) / k, w: b.w / k, h: b.h / k };
+  }
+  /* 찍기 전: 틀에 잘 맞았는지 수시로 보고 틀 색과 안내를 바꾼다 */
+  let alignTimer = 0, alignCanvas = null;
+  function stopAlign() { if (alignTimer) { clearInterval(alignTimer); alignTimer = 0; } }
+  function startAlign() {
+    stopAlign();
+    alignTimer = setInterval(() => {
+      if (ST.mode !== 'live' || ST.screen !== 'capture') { stopAlign(); return; }
+      const g = liveBox();
+      if (!g) return;
+      if (!alignCanvas) { alignCanvas = document.createElement('canvas'); alignCanvas.width = 75; alignCanvas.height = 105; }
+      const c = alignCanvas.getContext('2d', { willReadFrequently: true });
+      c.save();
+      if (ST.profile.hand === 'left') { c.translate(75, 0); c.scale(-1, 1); }       // 엄지가 오른쪽인 기준 방향으로
+      c.drawImage(el.video, g.x, g.y, g.w, g.h, 0, 0, 75, 105);
+      c.restore();
+      let q = null;
+      try { q = PalmReader.quickAlign(alignCanvas); } catch (e) { q = null; }
+      if (!q) return;
+      const state = q.hint === 'ok' ? 'ok' : q.hint === 'none' ? 'idle' : 'warn';
+      setHint(liveHint(q.hint), q.hint === 'ok');
+      if (state !== ST.guideState) { ST.guideState = state; paintGuide(); }
+    }, 350);
+  }
   function stopCamera() {
+    stopAlign();
     if (ST.stream) { ST.stream.getTracks().forEach((t) => t.stop()); ST.stream = null; }
     try { el.video.srcObject = null; } catch (e) { /* 무시 */ }
   }
-  /* "카메라로 찍기": 휴대폰은 기본 카메라로, PC는 화면 안의 웹캠으로 */
+  /* 화면 안 카메라를 쓸 수 있는가 (미리보기 화면·http·권한 거절 뒤에는 쓸 수 없다) */
+  function canLive() {
+    return !ST.camBlocked && !Chances.S.sandbox && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  }
+  /* "카메라로 찍기": 화면 안 카메라(틀 있음)를 먼저, 안 되면 기기의 기본 카메라로 */
   function onCamButton() {
-    const canStream = navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
-    if (isTouch || Chances.S.sandbox || !canStream) { el.fileShoot.click(); return; }
+    if (!canLive()) { el.fileShoot.click(); return; }
     startCamera();
   }
   async function startCamera() {
@@ -3722,13 +3789,16 @@ const App = (function () {
       const set = track && track.getSettings ? track.getSettings() : {};
       ST.mirrored = set.facingMode ? set.facingMode === 'user' : true;      // 웹캠은 거울처럼 보여 준다
       el.video.classList.toggle('mirror', ST.mirrored);
+      layoutStage();
+      startAlign();
       try {
         const devs = await navigator.mediaDevices.enumerateDevices();
         el.btnSwitch.style.visibility = devs.filter((d) => d.kind === 'videoinput').length > 1 ? 'visible' : 'hidden';
       } catch (e) { el.btnSwitch.style.visibility = 'hidden'; }
     } catch (e) {
+      ST.camBlocked = true;
       setMode('choose');
-      toast('카메라를 켤 수 없어요. 앨범에서 사진을 골라주세요.');
+      toast('화면 안 카메라를 켤 수 없어요. 아래 버튼으로 찍거나 골라주세요.');
     }
   }
   function shootLive() {
@@ -3737,7 +3807,8 @@ const App = (function () {
     const c = document.createElement('canvas');
     c.width = v.videoWidth; c.height = v.videoHeight;
     c.getContext('2d').drawImage(v, 0, 0);        // 저장은 거울 반전 없이, 실제 모습 그대로
-    c.toBlob((blob) => { if (blob) { stopCamera(); setPhoto(URL.createObjectURL(blob)); } }, 'image/jpeg', 0.95);
+    const gb = liveBox();                         // 찍는 순간 틀이 놓여 있던 자리
+    c.toBlob((blob) => { if (blob) { stopCamera(); setPhoto(URL.createObjectURL(blob), { guide: gb }); } }, 'image/jpeg', 0.95);
   }
 
   /* 사진 받기 → 손바닥을 자동으로 찾아 바로 판독 */
@@ -3751,7 +3822,7 @@ const App = (function () {
       img.style.height = p.ih + 'px';
       ST.flipManual = false;
       ST.photoFlip = null;
-      if (opt && opt.adjust) enterAdjust(); else autoRead(!opt || opt.allowRotate !== false);
+      if (opt && opt.adjust) enterAdjust(); else autoRead(!opt || opt.allowRotate !== false, opt && opt.guide);
     };
     img.onerror = () => { URL.revokeObjectURL(url); toast('사진을 열 수 없어요. 다른 사진을 골라주세요.'); };
     img.src = url;
@@ -3759,10 +3830,18 @@ const App = (function () {
   function loadPhoto(file) {
     if (file) setPhoto(URL.createObjectURL(file));
   }
-  function autoRead(allowRotate) {
-    const p = ST.photo;
+  function autoRead(allowRotate, guide) {
+    const p = ST.photo, left = ST.profile.hand === 'left';
     let f = null;
-    try { f = PalmReader.autoFit(el.photo, p.iw, p.ih, ST.profile.hand === 'left', allowRotate); } catch (e) { f = null; }
+    try { f = PalmReader.autoFit(el.photo, p.iw, p.ih, left, guide ? false : allowRotate); } catch (e) { f = null; }
+    if (guide) {
+      // 틀에 맞춰 찍은 사진: 자동으로 찾은 자리가 틀 근처일 때만 그 자리로 다듬고, 아니면 틀 자리를 그대로 쓴다
+      const gs = guide.w / HAND.W;
+      const near = f && f.ok && f.s > gs * 0.6 && f.s < gs * 1.6
+        && Math.abs((f.ox + HAND.W * f.s / 2) - (guide.x + guide.w / 2)) < guide.w * 0.4
+        && Math.abs((f.oy + HAND.H * f.s / 2) - (guide.y + guide.h / 2)) < guide.h * 0.4;
+      if (!near) f = { ok: true, flip: left, s: gs, ox: guide.x, oy: guide.y };
+    }
     if (f && f.rot) { rotatePhoto(f.rot, false); return; }       // 옆으로 누운 사진은 세운 뒤 다시 찾는다
     ST.fromPhoto = true;
     if (f && f.ok) {
@@ -3883,6 +3962,7 @@ const App = (function () {
   function goCapture() {
     show('capture');
     setMode('choose');
+    if (canLive()) startCamera();      // 틀이 있는 화면 안 카메라를 곧바로 연다
   }
   function doCapture() {           // 직접 맞추기에서 "이대로 판독"
     if (ST.busy) return;
@@ -4240,7 +4320,7 @@ const App = (function () {
     el.btnBack.addEventListener('click', goSetup);
     el.btnCam.addEventListener('click', onCamButton);
     el.btnShoot.addEventListener('click', shootLive);
-    el.btnCancelCam.addEventListener('click', () => { stopCamera(); setMode('choose'); });
+    el.btnCancelCam.addEventListener('click', () => el.filePick.click());      // 카메라 화면의 "앨범" 버튼
     el.btnUsePhoto.addEventListener('click', doCapture);
     el.btnSwitch.addEventListener('click', () => { ST.facing = ST.facing === 'environment' ? 'user' : 'environment'; startCamera(); });
     el.btnFlipHand.addEventListener('click', () => { ST.flipManual = !ST.flipManual; refreshFlip(); });
@@ -4280,7 +4360,7 @@ const App = (function () {
       if (document.hidden) { if (ST.mode === 'live') stopCamera(); }
       else if (ST.mode === 'live' && !ST.stream) startCamera();
     });
-    window.addEventListener('resize', () => { if (ST.screen === 'capture' && ST.mode === 'adjust') layoutStage(); });
+    window.addEventListener('resize', () => { if (ST.screen === 'capture' && ST.mode !== 'choose') layoutStage(); });
     bindPhotoGestures();
     animateIntro();
 
