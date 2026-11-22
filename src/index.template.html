@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>손금은 이미 알고 있다.</title>
 <meta name="description" content="손바닥을 찍으면 손금을 읽어 자동차부터 시계, 가전, 사는 곳까지 당신과 어울리는 것을 알려주는 게임">
 <meta property="og:type" content="website">
@@ -91,10 +91,10 @@
         </ul>
         <button id="btnCam" class="btn btn-primary btn-big" type="button">카메라로 찍기</button>
         <label class="btn btn-ghost btn-big" for="filePick">앨범에서 고르기</label>
-        <p class="fine">사진에서 손바닥을 알아서 찾아 읽습니다.</p>
+        <p class="fine">이 화면에서는 손 모양 틀을 띄울 수 없어, 사진에서 손바닥을 알아서 찾아 읽습니다.</p>
       </div>
 
-      <!-- PC 웹캠으로 찍을 때, 그리고 자동으로 손을 못 찾아 직접 맞출 때만 쓰는 화면 -->
+      <!-- 화면 안 카메라(손 모양 틀과 함께)와, 자동으로 손을 못 찾았을 때의 직접 맞추기 -->
       <div id="stageBox" class="stagebox" hidden>
         <div id="stage" class="stage">
           <video id="video" playsinline muted autoplay></video>
@@ -103,9 +103,9 @@
           <p id="hint" class="hint" aria-live="polite"></p>
         </div>
         <div id="liveControls" class="controls">
-          <button id="btnCancelCam" class="btn btn-ghost" type="button">취소</button>
+          <button id="btnCancelCam" class="btn btn-ghost" type="button">앨범</button>
           <button id="btnShoot" class="shutter" type="button" aria-label="촬영"><span></span></button>
-          <button id="btnSwitch" class="btn btn-ghost" type="button">카메라 전환</button>
+          <button id="btnSwitch" class="btn btn-ghost" type="button">전환</button>
         </div>
         <div id="photoControls" class="controls stack" hidden>
           <div class="zoomrow">
