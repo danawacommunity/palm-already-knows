@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>손금은 이미 알고 있다.</title>
+<meta name="description" content="손바닥을 찍으면 손금을 읽어 자동차부터 시계, 가전, 사는 곳까지 당신과 어울리는 것을 알려주는 게임">
+<meta property="og:type" content="website">
+<meta property="og:title" content="손금은 이미 알고 있다.">
+<meta property="og:description" content="수상학으로 찾는 나의 굿즈. 손바닥 한 장이면 자동차부터 시계, 가전, 사는 곳까지 알려드려요.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&family=Yeon+Sung&display=swap" rel="stylesheet">
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="talisman">
+
+    <!-- ① 시작 -->
+    <section id="s-intro" class="screen">
+      <p class="eyebrow"><span class="seal" aria-hidden="true">手相</span>수상학으로 찾는 나의 굿즈</p>
+      <h1 class="title">손금은 이미<br><em>알고 있다.</em></h1>
+      <p class="lede">손바닥 한 장이면 됩니다. 손금과 손 모양을 읽어 자동차부터 시계, 가전, 사는 곳까지 당신과 꼭 맞는 것을 찾아 드려요.</p>
+      <canvas id="introArt" class="introart" width="600" height="600" role="img" aria-label="손금이 그려진 손바닥 위로 작은 자동차가 생명선을 따라 달리는 그림"></canvas>
+      <p id="refBanner" class="note note-ok" hidden></p>
+      <ol class="steps">
+        <li><b>찍기</b>손바닥을 펴서 크게 촬영</li>
+        <li><b>읽기</b>주요선·보조선·구·손 모양 판독</li>
+        <li><b>만나기</b>어울리는 굿즈와 4컷 만화</li>
+      </ol>
+      <button id="btnStart" class="btn btn-primary btn-big" type="button">손금 찍으러 가기</button>
+      <p id="chanceLine" class="chance" aria-live="polite">첫 판독은 무료예요.</p>
+      <button id="btnLast" class="btn btn-ghost" type="button" hidden>지난 결과 다시 보기</button>
+      <p class="fine">재미로 보는 손금이에요. 사진은 이 기기 안에서만 분석되고 어디에도 전송되지 않습니다.</p>
+      <p id="modeLine" class="fine mode" hidden></p>
+    </section>
+
+    <!-- ② 찍기 전 선택 -->
+    <section id="s-setup" class="screen" hidden>
+      <div class="bar">
+        <button id="btnSetupBack" class="btn-icon" type="button" aria-label="처음 화면으로">←</button>
+        <h2 class="bar-title">찍기 전에 세 가지만 골라주세요</h2>
+      </div>
+      <fieldset class="seg">
+        <legend>어느 손을 볼까요?</legend>
+        <div class="seg-row">
+          <label><input type="radio" name="hand" value="left"><span>왼손</span></label>
+          <label><input type="radio" name="hand" value="right"><span>오른손</span></label>
+        </div>
+        <p class="seg-note">왼손은 타고난 기질, 오른손은 살아오며 만든 기질을 봅니다. 고르기 어려우면 주로 쓰는 손으로.</p>
+      </fieldset>
+      <fieldset class="seg">
+        <legend>성별</legend>
+        <div class="seg-row">
+          <label><input type="radio" name="gender" value="m"><span>남자</span></label>
+          <label><input type="radio" name="gender" value="f"><span>여자</span></label>
+          <label><input type="radio" name="gender" value="u"><span>모름</span></label>
+        </div>
+      </fieldset>
+      <fieldset class="seg">
+        <legend>나잇대</legend>
+        <div class="seg-row seg-3">
+          <label><input type="radio" name="age" value="10"><span>10대</span></label>
+          <label><input type="radio" name="age" value="20"><span>20대</span></label>
+          <label><input type="radio" name="age" value="30"><span>30대</span></label>
+          <label><input type="radio" name="age" value="40"><span>40대</span></label>
+          <label><input type="radio" name="age" value="50"><span>50대</span></label>
+          <label><input type="radio" name="age" value="60"><span>60대 이상</span></label>
+        </div>
+      </fieldset>
+      <button id="btnSetupGo" class="btn btn-primary btn-big" type="button" disabled>촬영하러 가기</button>
+      <p id="setupNote" class="chance">성별과 나잇대를 골라주세요.</p>
+      <p class="fine">성별과 나잇대는 어울리는 사람과 추천 품목을 고르는 데만 쓰이고, 이 기기에만 저장됩니다.</p>
+    </section>
+
+    <!-- ③ 촬영: 카메라로 찍기 / 앨범에서 고르기 -->
+    <section id="s-capture" class="screen" hidden>
+      <div class="bar">
+        <button id="btnBack" class="btn-icon" type="button" aria-label="이전 화면으로">←</button>
+        <h2 id="capTitle" class="bar-title">손바닥 사진을 준비해 주세요</h2>
+      </div>
+
+      <div id="chooseBox" class="choose">
+        <ul class="shoottips">
+          <li><b>쫙 펴서</b>손가락 사이를 살짝 벌려요</li>
+          <li><b>크게</b>손 전체가 사진에 들어오게</li>
+          <li><b>밝게</b>손과 다른 색의 배경 앞에서</li>
+        </ul>
+        <button id="btnCam" class="btn btn-primary btn-big" type="button">카메라로 찍기</button>
+        <label class="btn btn-ghost btn-big" for="filePick">앨범에서 고르기</label>
+        <p class="fine">사진에서 손바닥을 알아서 찾아 읽습니다.</p>
+      </div>
+
+      <!-- PC 웹캠으로 찍을 때, 그리고 자동으로 손을 못 찾아 직접 맞출 때만 쓰는 화면 -->
+      <div id="stageBox" class="stagebox" hidden>
+        <div id="stage" class="stage">
+          <video id="video" playsinline muted autoplay></video>
+          <img id="photo" alt="" hidden draggable="false">
+          <canvas id="guide" aria-hidden="true" hidden></canvas>
+          <p id="hint" class="hint" aria-live="polite"></p>
+        </div>
+        <div id="liveControls" class="controls">
+          <button id="btnCancelCam" class="btn btn-ghost" type="button">취소</button>
+          <button id="btnShoot" class="shutter" type="button" aria-label="촬영"><span></span></button>
+          <button id="btnSwitch" class="btn btn-ghost" type="button">카메라 전환</button>
+        </div>
+        <div id="photoControls" class="controls stack" hidden>
+          <div class="zoomrow">
+            <label for="zoom">크기</label>
+            <input id="zoom" type="range" min="0" max="100" value="30" step="1">
+          </div>
+          <div class="row">
+            <button id="btnFlipHand" class="btn btn-ghost" type="button">틀 좌우 뒤집기</button>
+            <button id="btnRotate" class="btn btn-ghost" type="button">90° 돌리기</button>
+          </div>
+          <button id="btnUsePhoto" class="btn btn-primary" type="button">이대로 판독</button>
+        </div>
+      </div>
+      <input id="filePick" class="vh" type="file" accept="image/*" tabindex="-1">
+      <input id="fileShoot" class="vh" type="file" accept="image/*" capture="environment" tabindex="-1">
+    </section>
+
+    <!-- ④ 판독 중 -->
+    <section id="s-scan" class="screen" hidden>
+      <h2 id="scanTitle" class="bar-title center">손금을 읽는 중…</h2>
+      <div class="stage scanstage">
+        <canvas id="scanCanvas" width="600" height="840" role="img" aria-label="찍은 사진"></canvas>
+        <div id="scanbar" class="scanbar" aria-hidden="true"></div>
+      </div>
+      <ol id="scanSteps" class="scansteps">
+        <li>사진에서 손바닥 찾기</li>
+        <li>밝기와 피부색 확인</li>
+        <li>주요선 읽기: 생명선 · 감정선 · 두뇌선 · 운명선</li>
+        <li>보조선 읽기: 태양선 · 수성선 · 결혼선 · 여행선 · 재물선</li>
+        <li>구(丘)와 손 모양 읽기</li>
+        <li>성향 계산과 굿즈 매칭</li>
+      </ol>
+      <div id="retake" class="card retake" hidden>
+        <p class="retake-kicker">다시 찍어주세요</p>
+        <h3 id="retakeTitle"></h3>
+        <p id="retakeTip"></p>
+        <button id="btnRetake" class="btn btn-primary" type="button">다시 찍기</button>
+        <button id="btnAdjust" class="btn btn-ghost" type="button" hidden>이 사진에서 직접 맞추기</button>
+        <p class="fine">다시 찍어도 기회는 줄어들지 않아요.</p>
+      </div>
+    </section>
+
+    <!-- ⑤ 결과 -->
+    <section id="s-result" class="screen" hidden>
+      <p class="eyebrow"><span class="seal" aria-hidden="true">判讀</span>판독 완료 · 당신의 최애는</p>
+      <h1 id="carName" class="carname"></h1>
+      <p class="chips"><span id="carKind" class="chip"></span><span id="carSync" class="chip chip-red"></span></p>
+      <p id="carTag" class="tagline"></p>
+      <canvas id="heroCanvas" class="hero" role="img"></canvas>
+      <p id="profileLine" class="fine left"></p>
+
+      <h2 class="h">4컷 만화로 보는 이유</h2>
+      <div class="comic">
+        <canvas id="panel1" role="img"></canvas>
+        <canvas id="panel2" role="img"></canvas>
+        <canvas id="panel3" role="img"></canvas>
+        <canvas id="panel4" role="img"></canvas>
+      </div>
+
+      <h2 class="h">자동차 말고도, 손금이 고른 나의 굿즈</h2>
+      <p class="fine left">가장 두드러진 성향을 중심으로, 항목에 따라 두 번째·세 번째 성향까지 보고 골랐어요. 항목마다 근거가 된 성향을 적어 두었습니다.</p>
+      <nav id="pickNav" class="tabs" aria-label="추천 묶음 바로가기"></nav>
+      <div id="pickPanels" class="pickgroups"></div>
+
+      <h2 class="h">내 손금 판독</h2>
+      <div class="card trace">
+        <canvas id="traceCanvas" role="img" aria-label="촬영한 손바닥 위에 판독한 손금을 색으로 표시한 그림"></canvas>
+        <div>
+          <h3 class="read-head">주요선</h3>
+          <ul id="lineList" class="linelist"></ul>
+        </div>
+      </div>
+      <div id="moreRead" class="card moreread"></div>
+
+      <h2 class="h">왜 이 차일까</h2>
+      <div id="reasons" class="reasons"></div>
+      <div class="card">
+        <div id="bars" class="bars"></div>
+        <p class="fine legend"><span class="lg lg-me"></span>내 손금 점수 <span class="lg lg-car"></span>이 차의 성격</p>
+      </div>
+
+      <div class="actions">
+        <button id="btnShare" class="btn btn-primary btn-big" type="button">결과 이미지 공유하기</button>
+        <div class="row">
+          <button id="btnSave" class="btn btn-ghost" type="button">이미지 저장</button>
+          <button id="btnCopy" class="btn btn-ghost" type="button">링크 복사</button>
+        </div>
+        <button id="btnAgain" class="btn btn-dark" type="button">다시 하기</button>
+        <p id="againLine" class="chance"></p>
+      </div>
+      <p class="fine">재미로 보는 손금이에요. 사진은 이 기기 안에서만 분석되고 어디에도 전송되지 않습니다.</p>
+    </section>
+
+  </div>
+</main>
+
+<!-- 다시 하기 안내 -->
+<div id="gate" class="overlay" hidden>
+  <div class="card gatecard" role="dialog" aria-modal="true" aria-labelledby="gateTitle" tabindex="-1">
+    <button id="gateClose" class="btn-icon close" type="button" aria-label="닫기">×</button>
+    <h2 id="gateTitle" class="gate-title">다시 보려면 친구의 접속이 필요해요</h2>
+    <ol class="steps steps-small">
+      <li><b>공유</b>결과를 친구에게 보내요</li>
+      <li><b>접속</b>친구가 링크를 눌러 실제로 들어와요</li>
+      <li><b>기회</b>다시 보기 1회가 생겨요 (하루 1번 사용)</li>
+    </ol>
+    <div id="gateLinkBox" class="linkbox">
+      <label for="gateLink" class="vh">내 공유 링크</label>
+      <input id="gateLink" type="text" readonly>
+      <button id="gateCopy" class="btn btn-ghost" type="button">복사</button>
+    </div>
+    <button id="gateShare" class="btn btn-primary" type="button">결과 이미지 공유하기</button>
+    <p id="gateStatus" class="status" aria-live="polite"></p>
+    <button id="gateGo" class="btn btn-dark" type="button" hidden>기회 도착! 다시 하기</button>
+    <div id="gatePreview" class="note" hidden>
+      <p>지금은 미리보기 모드예요. 친구의 접속을 확인하는 서버가 연결되어 있지 않아 실제 접속은 집계되지 않습니다.</p>
+      <button id="gateSim" class="btn btn-chip" type="button">미리보기용 · 친구가 접속했다고 가정하기</button>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+/*__JS__*/
+</script>
+</body>
+</html>
