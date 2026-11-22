@@ -23,12 +23,12 @@
     <section id="s-intro" class="screen">
       <p class="eyebrow"><span class="seal" aria-hidden="true">手相</span>수상학으로 찾는 나의 굿즈</p>
       <h1 class="title">손금은 이미<br><em>알고 있다.</em></h1>
-      <p class="lede">손바닥 한 장이면 됩니다. 손금과 손 모양을 읽어 자동차부터 시계, 가전, 사는 곳까지 당신과 꼭 맞는 것을 찾아 드려요.</p>
+      <p class="lede">손바닥 한 장이면 됩니다. 손금과 손톱을 읽어 자동차부터 시계, 가전, 사는 곳까지 당신과 꼭 맞는 것을 찾아 드려요.</p>
       <canvas id="introArt" class="introart" width="600" height="600" role="img" aria-label="손금이 그려진 손바닥 위로 작은 자동차가 생명선을 따라 달리는 그림"></canvas>
       <p id="refBanner" class="note note-ok" hidden></p>
       <ol class="steps">
-        <li><b>찍기</b>손바닥을 펴서 크게 촬영</li>
-        <li><b>읽기</b>주요선·보조선·구·손 모양 판독</li>
+        <li><b>찍기</b>손바닥과 엄지 손톱 촬영</li>
+        <li><b>읽기</b>주요선·보조선·구·손톱 판독</li>
         <li><b>만나기</b>어울리는 굿즈와 4컷 만화</li>
       </ol>
       <button id="btnStart" class="btn btn-primary btn-big" type="button">손금 찍으러 가기</button>
@@ -84,14 +84,19 @@
       </div>
 
       <div id="chooseBox" class="choose">
-        <ul class="shoottips">
-          <li><b>쫙 펴서</b>손가락 사이를 살짝 벌려요</li>
+        <ul id="tipsPalm" class="shoottips">
+          <li><b>손바닥을</b>쫙 펴서, 손금이 보이는 안쪽 면을 찍어요</li>
           <li><b>크게</b>손 전체가 사진에 들어오게</li>
           <li><b>밝게</b>손과 다른 색의 배경 앞에서</li>
         </ul>
+        <ul id="tipsNail" class="shoottips" hidden>
+          <li><b>엄지 손톱</b>한 개만, 손등 쪽에서 찍어요</li>
+          <li><b>가운데</b>손톱이 사진 한가운데에 크게</li>
+          <li><b>밝게</b>빛이 번쩍 반사되지 않게</li>
+        </ul>
         <button id="btnCam" class="btn btn-primary btn-big" type="button">카메라로 찍기</button>
         <label class="btn btn-ghost btn-big" for="filePick">앨범에서 고르기</label>
-        <p class="fine">이 화면에서는 손 모양 틀을 띄울 수 없어, 사진에서 손바닥을 알아서 찾아 읽습니다.</p>
+        <p id="chooseNote" class="fine">이 화면에서는 틀을 띄울 수 없어, 사진에서 손바닥을 알아서 찾아 읽습니다.</p>
       </div>
 
       <!-- 화면 안 카메라(손 모양 틀과 함께)와, 자동으로 손을 못 찾았을 때의 직접 맞추기 -->
@@ -119,6 +124,7 @@
           <button id="btnUsePhoto" class="btn btn-primary" type="button">이대로 판독</button>
         </div>
       </div>
+      <button id="btnSkipNail" class="btn btn-ghost" type="button" hidden>손톱은 건너뛰기</button>
       <input id="filePick" class="vh" type="file" accept="image/*" tabindex="-1">
       <input id="fileShoot" class="vh" type="file" accept="image/*" capture="environment" tabindex="-1">
     </section>
@@ -135,7 +141,7 @@
         <li>밝기와 피부색 확인</li>
         <li>주요선 읽기: 생명선 · 감정선 · 두뇌선 · 운명선</li>
         <li>보조선 읽기: 태양선 · 수성선 · 결혼선 · 여행선 · 재물선</li>
-        <li>구(丘)와 손 모양 읽기</li>
+        <li>구(丘)와 손톱 읽기</li>
         <li>성향 계산과 굿즈 매칭</li>
       </ol>
       <div id="retake" class="card retake" hidden>
