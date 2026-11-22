@@ -6,6 +6,7 @@
 
 const CONFIG = {
   GAME_TITLE: '손금은 이미 알고 있다.',
+  GATE_ENABLED: false,     // false: 횟수 제한 없이 누구나 무료. true 로 바꾸면 "친구가 접속해야 다시 하기" 규칙이 다시 켜진다
   FIRST_PLAY_FREE: true,   // 첫 1회는 무료
   DAILY_BONUS_LIMIT: 1,    // 공유로 얻은 "다시 하기"는 하루에 몇 번까지 쓸 수 있는지
   API_BASE: 'api',         // server.js 와 같은 주소에서 서비스할 때의 API 경로

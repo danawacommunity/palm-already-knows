@@ -70,6 +70,7 @@ const App = (function () {
     setTimeout(() => requestAnimationFrame(tick), 500);
   }
   function chanceText(st) {
+    if (st.why === 'open') return '몇 번이든 무료로 볼 수 있어요.';
     if (st.why === 'free') return '첫 판독은 무료예요.';
     if (st.why === 'bonus') return '친구가 접속해서 다시 보기 기회가 생겼어요!';
     if (st.why === 'daily_limit') return '오늘의 다시 보기는 이미 썼어요. 내일 또 볼 수 있어요.';
@@ -629,6 +630,7 @@ const App = (function () {
   }
   function updateAgain() {
     const st = Chances.S.st;
+    el.againLine.hidden = st.why === 'open';
     el.againLine.textContent = st.canPlay ? '다시 보기 기회가 있어요.' : '친구가 내 링크로 실제 접속하면 다시 볼 수 있어요. (하루 1번)';
   }
   function makeCard() {

@@ -71,8 +71,10 @@ const Chances = (function () {
     } finally { clearTimeout(timer); }
   }
 
+  const OPEN = { freeUsed: false, credits: 0, usedToday: 0, limit: 0, canPlay: true, why: 'open' };
   async function init() {
     S.sandbox = !!(window.claude && typeof window.claude.use === 'function');
+    if (!CONFIG.GATE_ENABLED) { S.mode = 'open'; S.st = OPEN; return S; }      // 제한 없음: 서버도 초대 코드도 쓰지 않는다
     S.uid = Store.get('uid', null);
     if (!S.uid) { S.uid = rid(20); Store.set('uid', S.uid); }
     // 공유 링크로 들어왔는지: ?r=코드 (또는 #r-코드)
@@ -98,6 +100,7 @@ const Chances = (function () {
 
   /* 판독 1회를 쓴다 (또렷한 결과가 나왔을 때만 호출) */
   async function consume() {
+    if (S.mode === 'open') return true;
     if (S.mode === 'server') {
       try { const j = await api('play', { uid: S.uid }); S.st = j.state; return j.ok; } catch (e) { return true; }
     }
@@ -109,6 +112,7 @@ const Chances = (function () {
     return true;
   }
   async function refresh() {
+    if (S.mode === 'open') return S.st;
     if (S.mode === 'server') {
       try { const j = await api('state', { uid: S.uid }); S.st = j.state; } catch (e) { /* 다음에 다시 */ }
     } else S.st = view(localData());
@@ -125,6 +129,7 @@ const Chances = (function () {
   }
   function shareLink() {
     if (S.sandbox || !/^https?:$/.test(location.protocol)) return null;
+    if (S.mode === 'open') return location.origin + location.pathname;
     return location.origin + location.pathname + '?r=' + S.code;
   }
 
