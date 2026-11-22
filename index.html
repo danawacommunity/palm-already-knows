@@ -333,12 +333,12 @@ body {
     <section id="s-intro" class="screen">
       <p class="eyebrow"><span class="seal" aria-hidden="true">手相</span>수상학으로 찾는 나의 굿즈</p>
       <h1 class="title">손금은 이미<br><em>알고 있다.</em></h1>
-      <p class="lede">손바닥 한 장이면 됩니다. 손금과 손 모양을 읽어 자동차부터 시계, 가전, 사는 곳까지 당신과 꼭 맞는 것을 찾아 드려요.</p>
+      <p class="lede">손바닥 한 장이면 됩니다. 손금과 손톱을 읽어 자동차부터 시계, 가전, 사는 곳까지 당신과 꼭 맞는 것을 찾아 드려요.</p>
       <canvas id="introArt" class="introart" width="600" height="600" role="img" aria-label="손금이 그려진 손바닥 위로 작은 자동차가 생명선을 따라 달리는 그림"></canvas>
       <p id="refBanner" class="note note-ok" hidden></p>
       <ol class="steps">
-        <li><b>찍기</b>손바닥을 펴서 크게 촬영</li>
-        <li><b>읽기</b>주요선·보조선·구·손 모양 판독</li>
+        <li><b>찍기</b>손바닥과 엄지 손톱 촬영</li>
+        <li><b>읽기</b>주요선·보조선·구·손톱 판독</li>
         <li><b>만나기</b>어울리는 굿즈와 4컷 만화</li>
       </ol>
       <button id="btnStart" class="btn btn-primary btn-big" type="button">손금 찍으러 가기</button>
@@ -394,14 +394,19 @@ body {
       </div>
 
       <div id="chooseBox" class="choose">
-        <ul class="shoottips">
-          <li><b>쫙 펴서</b>손가락 사이를 살짝 벌려요</li>
+        <ul id="tipsPalm" class="shoottips">
+          <li><b>손바닥을</b>쫙 펴서, 손금이 보이는 안쪽 면을 찍어요</li>
           <li><b>크게</b>손 전체가 사진에 들어오게</li>
           <li><b>밝게</b>손과 다른 색의 배경 앞에서</li>
         </ul>
+        <ul id="tipsNail" class="shoottips" hidden>
+          <li><b>엄지 손톱</b>한 개만, 손등 쪽에서 찍어요</li>
+          <li><b>가운데</b>손톱이 사진 한가운데에 크게</li>
+          <li><b>밝게</b>빛이 번쩍 반사되지 않게</li>
+        </ul>
         <button id="btnCam" class="btn btn-primary btn-big" type="button">카메라로 찍기</button>
         <label class="btn btn-ghost btn-big" for="filePick">앨범에서 고르기</label>
-        <p class="fine">이 화면에서는 손 모양 틀을 띄울 수 없어, 사진에서 손바닥을 알아서 찾아 읽습니다.</p>
+        <p id="chooseNote" class="fine">이 화면에서는 틀을 띄울 수 없어, 사진에서 손바닥을 알아서 찾아 읽습니다.</p>
       </div>
 
       <!-- 화면 안 카메라(손 모양 틀과 함께)와, 자동으로 손을 못 찾았을 때의 직접 맞추기 -->
@@ -429,6 +434,7 @@ body {
           <button id="btnUsePhoto" class="btn btn-primary" type="button">이대로 판독</button>
         </div>
       </div>
+      <button id="btnSkipNail" class="btn btn-ghost" type="button" hidden>손톱은 건너뛰기</button>
       <input id="filePick" class="vh" type="file" accept="image/*" tabindex="-1">
       <input id="fileShoot" class="vh" type="file" accept="image/*" capture="environment" tabindex="-1">
     </section>
@@ -445,7 +451,7 @@ body {
         <li>밝기와 피부색 확인</li>
         <li>주요선 읽기: 생명선 · 감정선 · 두뇌선 · 운명선</li>
         <li>보조선 읽기: 태양선 · 수성선 · 결혼선 · 여행선 · 재물선</li>
-        <li>구(丘)와 손 모양 읽기</li>
+        <li>구(丘)와 손톱 읽기</li>
         <li>성향 계산과 굿즈 매칭</li>
       </ol>
       <div id="retake" class="card retake" hidden>
@@ -1161,6 +1167,29 @@ function fillHandShape(ctx, grow) {
   ctx.restore();
 }
 
+/* 손바닥 부분만(손가락 제외) 채워 그린다. 촬영 틀과 손바닥 전용 정렬 검사에 쓴다. */
+function fillPalmShape(ctx, grow) {
+  grow = grow || 0;
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = ctx.fillStyle;
+  const p = HAND.palm, n = p.length;
+  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  let m = mid(p[n - 1], p[0]);
+  ctx.beginPath();
+  ctx.moveTo(m[0], m[1]);
+  for (let i = 0; i < n; i++) {
+    const a = p[i], b = p[(i + 1) % n];
+    m = mid(a, b);
+    ctx.quadraticCurveTo(a[0], a[1], m[0], m[1]);
+  }
+  ctx.closePath();
+  ctx.fill();
+  if (14 + grow * 2 > 0) { ctx.lineWidth = 14 + grow * 2; ctx.stroke(); }
+  ctx.restore();
+}
+
 /* 손 그림(살색 + 먹선 윤곽). 만화와 결과 카드에서 사용 */
 function drawHandFigure(ctx, x, y, scale, opts) {
   opts = opts || {};
@@ -1380,7 +1409,9 @@ const PalmReader = (function () {
   }
 
   /* ---------- 본 분석 ---------- */
-  function analyze(srcCanvas) {
+  /* opt.palmOnly: 손바닥만 틀에 맞춰 찍은 사진. 손가락·엄지가 화면 밖일 수 있으므로 손바닥 부분만으로 정렬을 본다. */
+  function analyze(srcCanvas, opt) {
+    const palmOnly = !!(opt && opt.palmOnly);
     const ctx = srcCanvas.getContext('2d', { willReadFrequently: true });
     const img = ctx.getImageData(0, 0, W, H).data;
     const shape = shapeMasks();
@@ -1420,7 +1451,7 @@ const PalmReader = (function () {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const p = y * W + x;
       if (shape.inner[p]) {
-        inN++; inS += skin[p];
+        if (!palmOnly || (y >= fingerLimit && x < thumbLimit)) { inN++; inS += skin[p]; }
         if (y < fingerLimit) { fN++; fS += skin[p]; }
         if (x >= thumbLimit) { tN++; tS += skin[p]; }
       } else if (!shape.outer[p]) { oN++; oS += skin[p]; }
@@ -1429,10 +1460,13 @@ const PalmReader = (function () {
     q.fingers = +(fS / fN).toFixed(3);
     q.thumb = +(tS / Math.max(1, tN)).toFixed(3);
     q.outside = +(oS / Math.max(1, oN)).toFixed(3);
-    if (!skinLike || q.inside < 0.55) return fail('no_hand');
-    if (q.thumb < 0.25) return fail('thumb');
-    if (q.fingers < 0.3) return fail('misaligned');
-    if (q.outside > 0.72) return fail('background');
+    q.palmOnly = palmOnly;
+    if (!skinLike || q.inside < (palmOnly ? 0.72 : 0.55)) return fail('no_hand');
+    if (!palmOnly) {
+      if (q.thumb < 0.25) return fail('thumb');
+      if (q.fingers < 0.3) return fail('misaligned');
+      if (q.outside > 0.72) return fail('background');
+    }
 
     /* 3) 손바닥 영역: 조명 고르기 + 골(주름) 필터 */
     const n = PW * PH;
@@ -1818,7 +1852,7 @@ const PalmReader = (function () {
 
     const found = [life, heart, head, fate].filter((l) => l.found);
     q.clarity = Math.round(100 * clamp01((found.reduce((s, l) => s + contrast(l.mean), 0) / found.length - 0.02) / 0.12));
-    return { ok: true, quality: q, lines, marks, special, mounts, shape: handShape(skin) };
+    return { ok: true, quality: q, lines, marks, special, mounts, shape: null };      // 손가락은 읽지 않는다(손바닥만)
   }
 
   /* 손 모양: 손가락 끝 네 곳과 엄지 끝을 찾아 손가락 길이, 검지·약지 차이, 엄지 각도를 잰다.
@@ -1887,18 +1921,19 @@ const PalmReader = (function () {
 
   /* 촬영 전 실시간 안내용: 작은 화면에서 정렬 상태만 빠르게 본다 (0~1) */
   let _mini = null;
-  function quickAlign(canvas) {
+  function quickAlign(canvas, palmOnly) {
     const w = canvas.width, h = canvas.height;
-    if (!_mini || _mini.w !== w) {
+    palmOnly = !!palmOnly;
+    if (!_mini || _mini.w !== w || _mini.palm !== palmOnly) {
       const c = document.createElement('canvas');
       c.width = w; c.height = h;
       const g = c.getContext('2d', { willReadFrequently: true });
       g.scale(w / HAND.W, h / HAND.H);
       g.fillStyle = '#fff';
-      fillHandShape(g, -5);
+      if (palmOnly) fillPalmShape(g, -9); else fillHandShape(g, -5);
       const d = g.getImageData(0, 0, w, h).data, m = new Uint8Array(w * h);
       for (let i = 0; i < m.length; i++) m[i] = d[i * 4 + 3] > 127 ? 1 : 0;
-      _mini = { w, m };
+      _mini = { w, m, palm: palmOnly };
     }
     const d = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data;
     const cx = Math.round(HAND.center.x * w / HAND.W), cy = Math.round(HAND.center.y * h / HAND.H), cr = Math.round(HAND.center.r * w / HAND.W);
@@ -1923,6 +1958,7 @@ const PalmReader = (function () {
       if (_mini.m[p]) { inN++; inS += s; if (p % w >= thumbX) { tN++; tS += s; } } else { oN++; oS += s; }
     }
     const inside = inS / inN, outside = oS / oN;
+    if (palmOnly) return { score: inside, hint: inside >= 0.86 ? 'ok' : 'none' };
     if (inside < 0.6) return { score: inside, hint: 'none' };
     if (tS / Math.max(1, tN) < 0.35) return { score: 0.5, hint: 'thumb' };
     if (outside > 0.65) return { score: 0.5, hint: 'far' };
@@ -2148,7 +2184,60 @@ const PalmReader = (function () {
     return fit;
   }
 
-  return { analyze, quickAlign, autoFit, cropByFit, SIZE: { W, H, S } };
+  /* ============================================================
+   * 손톱 판독 (엄지 손톱 한 개를 틀에 맞춰 찍은 작은 사진)
+   *   가운데 색을 손톱 색으로 보고, 거기서부터 색이 비슷하고 경계(큰 밝기 변화)를 넘지 않는 범위를 손톱으로 본다.
+   *   → 세로/가로 비율(모양), 붉은 기(빛깔), 뿌리 쪽의 밝은 반달 유무
+   * ============================================================ */
+  function analyzeNail(canvas) {
+    const w = canvas.width, h = canvas.height;
+    const d = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data;
+    const n = w * h, Y = new Float32Array(n), Cb = new Float32Array(n), Cr = new Float32Array(n);
+    for (let p = 0, i = 0; p < n; p++, i += 4) {
+      const r = d[i], g = d[i + 1], b = d[i + 2];
+      Y[p] = 0.299 * r + 0.587 * g + 0.114 * b;
+      Cb[p] = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+      Cr[p] = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+    }
+    const cx = w >> 1, cy = h >> 1, rr = Math.round(w * 0.1), ys = [], bs = [], rs = [];
+    for (let y = cy - rr; y <= cy + rr; y++) for (let x = cx - rr; x <= cx + rr; x++) { const p = y * w + x; ys.push(Y[p]); bs.push(Cb[p]); rs.push(Cr[p]); }
+    const Y0 = median(ys), Cb0 = median(bs), Cr0 = median(rs);
+    if (Y0 < 45) return { ok: false, reason: 'dark' };
+    if (!(Cr0 - Cb0 >= 4 && Cr0 >= 124 && Cr0 <= 205 && Cb0 >= 70 && Cb0 <= 142)) return { ok: false, reason: 'none' };
+    // 가운데에서 번져 나가며 손톱 영역 찾기
+    const mask = new Uint8Array(n), stack = [cy * w + cx];
+    mask[cy * w + cx] = 1;
+    let cnt = 0, x0 = w, x1 = 0, y0 = h, y1 = 0;
+    const okPix = (p, q) => Math.abs(Cb[p] - Cb0) <= 8 && Math.abs(Cr[p] - Cr0) <= 8 && Y[p] >= 0.72 * Y0 && Math.abs(Y[p] - Y[q]) <= 9;
+    while (stack.length) {
+      const p = stack.pop(), x = p % w, y = (p / w) | 0;
+      cnt++;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      if (x > 0 && !mask[p - 1] && okPix(p - 1, p)) { mask[p - 1] = 1; stack.push(p - 1); }
+      if (x < w - 1 && !mask[p + 1] && okPix(p + 1, p)) { mask[p + 1] = 1; stack.push(p + 1); }
+      if (y > 0 && !mask[p - w] && okPix(p - w, p)) { mask[p - w] = 1; stack.push(p - w); }
+      if (y < h - 1 && !mask[p + w] && okPix(p + w, p)) { mask[p + w] = 1; stack.push(p + w); }
+    }
+    const bw = x1 - x0 + 1, bh = y1 - y0 + 1, frac = cnt / n;
+    const edges = (x0 <= 1) + (x1 >= w - 2) + (y0 <= 1) + (y1 >= h - 2);
+    // 영역이 너무 작거나 틀 밖으로 번졌으면 모양은 읽지 못한 것으로 둔다
+    const ratio = frac >= 0.05 && frac <= 0.8 && edges <= 1 && cnt / (bw * bh) >= 0.55 ? +(bh / bw).toFixed(2) : null;
+    // 반달: 손톱 영역의 위·아래 끝 30% 중 한쪽에, 더 밝고 덜 붉은 부분이 뭉쳐 있는가
+    let moon = false;
+    if (ratio != null) {
+      const band = (ya, yb) => {
+        let t = 0, m = 0;
+        // 반달은 색이 달라 손톱 영역에서 빠지므로, 손톱 상자 안 전체에서 센다
+        for (let y = Math.max(0, ya); y <= Math.min(h - 1, yb); y++) for (let x = x0; x <= x1; x++) { const p = y * w + x; t++; if (Y[p] > Y0 + 9 && (Cr[p] - Cb[p]) < (Cr0 - Cb0) - 2 && Cr[p] >= Cb[p]) m++; }
+        return t ? m / t : 0;
+      };
+      const k = Math.round(bh * 0.3);
+      moon = Math.max(band(y0, y0 + k), band(y1 - k, y1)) >= 0.14;
+    }
+    return { ok: true, ratio, pink: Math.round(Cr0 - Cb0), bright: Math.round(Y0), moon, area: +frac.toFixed(3) };
+  }
+
+  return { analyze, analyzeNail, quickAlign, autoFit, cropByFit, SIZE: { W, H, S } };
 })();
 
 'use strict';
@@ -2194,6 +2283,12 @@ const Fortune = (function () {
   }
 
   /* 보조선·특별한 손금·구·손 모양이 성향에 더하는 점수. why 에는 무엇이 더했는지 남긴다 */
+  /* 손톱 빛깔: 같은 조명에서 찍은 손바닥 피부색과 견주어 본다 (red | pale | mid) */
+  function nailTone(nl, skin) {
+    if (!nl || !skin) return 'mid';
+    const d = nl.pink - ((0.5 * skin[0] - 0.418688 * skin[1] - 0.081312 * skin[2]) - (-0.168736 * skin[0] - 0.331264 * skin[1] + 0.5 * skin[2]));
+    return d >= 4 ? 'red' : d <= -6 ? 'pale' : 'mid';
+  }
   function bonus(a) {
     const b = { vital: 0, advent: 0, heart: 0, logic: 0, dream: 0, grit: 0 };
     const why = { vital: [], advent: [], heart: [], logic: [], dream: [], grit: [] };
@@ -2211,6 +2306,16 @@ const Fortune = (function () {
     if (mt[0] && MOUNT_INFO[mt[0]]) {
       add(MOUNT_INFO[mt[0]].traits[0], 0.06, MOUNT_INFO[mt[0]].name);
       add(MOUNT_INFO[mt[0]].traits[1], 0.04, MOUNT_INFO[mt[0]].name);
+    }
+    const nl = a.nail;
+    if (nl) {
+      if (nl.ratio != null && nl.ratio >= 1.2) { add('heart', 0.05, '긴 손톱'); add('dream', 0.04, '긴 손톱'); }
+      else if (nl.ratio != null && nl.ratio <= 0.95) { add('vital', 0.05, '넓은 손톱'); add('advent', 0.03, '넓은 손톱'); }
+      else if (nl.ratio != null) { add('grit', 0.03, '고른 손톱'); add('logic', 0.03, '고른 손톱'); }
+      const tone = nailTone(nl, a.quality && a.quality.skin);
+      if (tone === 'red') add('vital', 0.04, '붉은 손톱');
+      else if (tone === 'pale') add('logic', 0.04, '맑은 손톱');
+      if (nl.moon) { add('grit', 0.03, '또렷한 반달'); add('vital', 0.03, '또렷한 반달'); }
     }
     if (sh) {
       if (sh.fingerRatio != null && sh.fingerRatio >= 0.83) add('logic', 0.06, '긴 손가락');
@@ -2369,7 +2474,7 @@ const Fortune = (function () {
     return {
       v: 3, ts: Date.now(), carId: pick.car.id, sync: pick.sync, balanced: pick.balanced,
       scores, reasons, script, lines: analysis.lines, quality: analysis.quality,
-      marks: analysis.marks || null, special: analysis.special || null, mounts: analysis.mounts || null, shape: analysis.shape || null,
+      marks: analysis.marks || null, special: analysis.special || null, mounts: analysis.mounts || null, shape: analysis.shape || null, nail: analysis.nail || null,
       boost: bon.why,
       profile: Object.assign({ hand: 'right', gender: 'u', age: 30 }, profile || {}),
       skin: (analysis.quality && analysis.quality.skin) || null,
@@ -2526,6 +2631,22 @@ const Fortune = (function () {
     if (mt && mt.order && mt.order.length >= 2) {
       const row = (id, rank) => ({ tag: MOUNT_INFO[id].name, color: '#1A1410', text: `${rank} 혈색이 도는 자리입니다(${MOUNT_INFO[id].where}). ${MOUNT_INFO[id].mean}을 뜻합니다.`, plus: rank === '가장' ? tn(MOUNT_INFO[id].traits) : null });
       out.push({ title: '구(丘)', rows: [row(mt.order[0], '가장'), row(mt.order[1], '두 번째로')], note: '구는 도톰하게 솟은 정도로 보지만 사진으로는 잴 수 없어, 주변보다 붉은 기가 도는 정도로 가늠했습니다.' });
+    }
+    const nl = res.nail;
+    if (nl) {
+      const rows = [];
+      rows.push(nl.ratio == null
+        ? { tag: '모양', color: '#1A1410', text: '손톱의 테두리가 또렷하게 잡히지 않아 모양은 읽지 못했습니다.' }
+        : nl.ratio >= 1.2 ? { tag: '모양', color: '#1A1410', text: '세로로 긴 손톱입니다. 마음이 여리고 상상력이 풍부한 타입으로 풉니다.', plus: tn(['heart', 'dream']) }
+        : nl.ratio <= 0.95 ? { tag: '모양', color: '#1A1410', text: '가로로 넓은 손톱입니다. 솔직하고 몸이 먼저 움직이는 타입으로 풉니다.', plus: tn(['vital', 'advent']) }
+        : { tag: '모양', color: '#1A1410', text: '길이와 너비가 고른 손톱입니다. 치우침 없이 차근차근 해내는 타입으로 풉니다.', plus: tn(['grit', 'logic']) });
+      const tone = nailTone(nl, res.skin);
+      rows.push(tone === 'red' ? { tag: '빛깔', color: '#C3251C', text: '손바닥보다 붉은 기가 도는 손톱입니다. 기운이 넘치고 열이 많은 기질로 풉니다.', plus: tn(['vital']) }
+        : tone === 'pale' ? { tag: '빛깔', color: '#C3251C', text: '맑고 옅은 빛의 손톱입니다. 차분하게 따져 보는 기질로 풉니다.', plus: tn(['logic']) }
+        : { tag: '빛깔', color: '#C3251C', text: '고운 분홍빛 손톱입니다. 모나지 않고 두루 잘 어울리는 기질로 풉니다.' });
+      rows.push(nl.moon ? { tag: '반달', color: '#0E6E66', text: '뿌리 쪽에 반달이 또렷합니다. 한번 시작하면 밀고 나가는 추진력으로 풉니다.', plus: tn(['grit', 'vital']) }
+        : { tag: '반달', color: '#0E6E66', text: '반달이 뚜렷하게 보이지 않습니다. 서두르지 않고 제 속도로 가는 타입으로 풉니다.' });
+      out.push({ title: '손톱', rows, note: '엄지 손톱 한 개의 모양과 빛깔만 재미로 본 것입니다. 조명과 매니큐어에 따라 달라질 수 있고, 건강 상태를 뜻하지 않습니다.' });
     }
     if (sh) {
       const rows = [];
@@ -3321,7 +3442,20 @@ const Draw = (function () {
   }
 
   /* 촬영 화면의 손바닥 가이드 */
-  function drawGuide(canvas, box, state, flip) {
+  /* kind: 'palm'(손바닥만) | 'nail'(손톱 한 개) | 그 밖(손 전체). box 는 palm·손 전체일 때 손 도형 상자, nail 일 때 손톱 상자 */
+  function nailShape(g, grow) {
+    const x = -grow, y = -grow, w = 100 + grow * 2, h = 125 + grow * 2, rt = 44 + grow, rb = 30 + grow;
+    g.beginPath();
+    g.moveTo(x + rt, y); g.lineTo(x + w - rt, y); g.quadraticCurveTo(x + w, y, x + w, y + rt);
+    g.lineTo(x + w, y + h - rb); g.quadraticCurveTo(x + w, y + h, x + w - rb, y + h);
+    g.lineTo(x + rb, y + h); g.quadraticCurveTo(x, y + h, x, y + h - rb);
+    g.lineTo(x, y + rt); g.quadraticCurveTo(x, y, x + rt, y);
+    g.closePath(); g.fill();
+  }
+  function drawGuide(canvas, box, state, flip, kind) {
+    const nail = kind === 'nail';
+    const UW = nail ? 100 : HAND.W, UH = nail ? 125 : HAND.H;
+    const shape = nail ? nailShape : kind === 'palm' ? fillPalmShape : fillHandShape;
     const ctx = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
     ctx.clearRect(0, 0, W, H);
@@ -3329,27 +3463,27 @@ const Draw = (function () {
     ctx.fillRect(0, 0, W, H);
     const place = () => {
       ctx.translate(box.x, box.y);
-      ctx.scale(box.w / HAND.W, box.h / HAND.H);
-      if (flip) { ctx.translate(HAND.W, 0); ctx.scale(-1, 1); }
+      ctx.scale(box.w / UW, box.h / UH);
+      if (flip) { ctx.translate(UW, 0); ctx.scale(-1, 1); }
     };
     // 손 모양만큼 구멍을 낸다
     ctx.save(); place();
     ctx.globalCompositeOperation = 'destination-out';
     ctx.fillStyle = '#000';
-    fillHandShape(ctx, 0);
+    shape(ctx, 0);
     ctx.restore();
     // 윤곽선 (손 모양 바깥 테두리만 남긴다)
     const o = document.createElement('canvas');
     o.width = W; o.height = H;
     const g = o.getContext('2d');
     g.save();
-    g.translate(box.x, box.y); g.scale(box.w / HAND.W, box.h / HAND.H);
-    if (flip) { g.translate(HAND.W, 0); g.scale(-1, 1); }
+    g.translate(box.x, box.y); g.scale(box.w / UW, box.h / UH);
+    if (flip) { g.translate(UW, 0); g.scale(-1, 1); }
     g.fillStyle = state === 'ok' ? '#5BE49B' : state === 'warn' ? '#FFD23F' : '#FFFFFF';
-    fillHandShape(g, 3);
+    shape(g, nail ? 4 : 3);
     g.globalCompositeOperation = 'destination-out';
     g.fillStyle = '#000';
-    fillHandShape(g, 0);
+    shape(g, 0);
     g.restore();
     ctx.drawImage(o, 0, 0);
   }
@@ -3572,6 +3706,9 @@ const App = (function () {
     photoFlip: null,         // 사진에서 자동으로 찾은 손의 방향
     profile: { hand: 'right', gender: null, age: null },
     guideState: 'idle',
+    step: 'palm',            // palm(손바닥) → nail(엄지 손톱)
+    nail: undefined,         // undefined: 아직 안 찍음 · null: 건너뜀 · 객체: 판독 결과
+    palmOnly: false,         // 손바닥만 틀에 맞춘 사진인가
     box: null,               // 가이드 상자 (촬영 화면 기준 CSS px)
     photo: { url: null, iw: 0, ih: 0, tx: 0, ty: 0, z: 1, zMin: 0.1, zMax: 5 },
     hand: null, captureFlip: false, fromPhoto: false,
@@ -3691,17 +3828,27 @@ const App = (function () {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     el.guide.width = Math.round(w * dpr);
     el.guide.height = Math.round(h * dpr);
-    let bh = h * 0.84, bw = bh * HAND.W / HAND.H;
-    if (bw > w * 0.92) { bw = w * 0.92; bh = bw * HAND.H / HAND.W; }
-    ST.box = { x: (w - bw) / 2, y: (h - bh) / 2 + h * 0.03, w: bw, h: bh };
+    if (ST.step === 'nail') {
+      // 손톱 한 개가 들어갈 작은 틀
+      const bw = w * 0.5, bh = bw * 1.25;
+      ST.box = { x: (w - bw) / 2, y: (h - bh) / 2 + h * 0.02, w: bw, h: bh };
+    } else {
+      // 손바닥만 화면에 크게: 손 도형 상자는 화면보다 크게 잡고, 그중 손바닥 부분이 가운데에 오게 한다(손가락은 화면 밖이어도 된다)
+      const PBX = HAND.palmBox;
+      let bw = w * 0.8 * HAND.W / PBX.w, bh = bw * HAND.H / HAND.W;
+      const maxH = h * 0.74 * HAND.H / PBX.h;
+      if (bh > maxH) { bh = maxH; bw = bh * HAND.W / HAND.H; }
+      ST.box = { x: w / 2 - bw / 2, y: h * 0.53 - (PBX.y + PBX.h / 2) / HAND.H * bh, w: bw, h: bh };
+    }
     paintGuide();
   }
   function paintGuide() {
     if (ST.mode === 'choose' || !ST.box || !el.guide.width) return;
     const k = el.guide.width / el.stage.clientWidth, b = ST.box;
     // 카메라 화면이 거울처럼 보일 때는 틀도 좌우를 바꿔 그린다
-    const flip = ST.mode === 'live' ? (ST.profile.hand === 'left') !== ST.mirrored : ST.guideFlip;
-    Draw.drawGuide(el.guide, { x: b.x * k, y: b.y * k, w: b.w * k, h: b.h * k }, ST.guideState, flip);
+    const nail = ST.step === 'nail';
+    const flip = nail ? false : ST.mode === 'live' ? (ST.profile.hand === 'left') !== ST.mirrored : ST.guideFlip;
+    Draw.drawGuide(el.guide, { x: b.x * k, y: b.y * k, w: b.w * k, h: b.h * k }, ST.guideState, flip, nail ? 'nail' : 'palm');
   }
   /* 틀의 엄지 방향: 사진에서 찾은 방향이 있으면 그대로, 없으면 고른 손대로 */
   function refreshFlip() {
@@ -3724,7 +3871,12 @@ const App = (function () {
     el.liveControls.hidden = mode !== 'live';
     el.photoControls.hidden = mode !== 'adjust';
     el.stage.classList.toggle('photo', mode === 'adjust');
-    el.capTitle.textContent = mode === 'adjust' ? '손 모양 틀에 손바닥을 맞춰주세요' : mode === 'live' ? '손 모양 틀에 손바닥을 맞춰주세요' : '손바닥 사진을 준비해 주세요';
+    const nail = ST.step === 'nail';
+    el.capTitle.textContent = nail ? (mode === 'live' ? '이번엔 엄지 손톱을 틀에 맞춰주세요' : '이번엔 엄지 손톱을 찍어주세요')
+      : mode === 'choose' ? '손바닥을 쫙 펴서 찍어주세요' : '손바닥을 쫙 펴서 틀에 맞춰주세요';
+    el.tipsPalm.hidden = nail; el.tipsNail.hidden = !nail;
+    el.chooseNote.textContent = nail ? '엄지 손톱이 사진 한가운데에 크게 오도록 찍어주세요.' : '이 화면에서는 틀을 띄울 수 없어, 사진에서 손바닥을 알아서 찾아 읽습니다.';
+    el.btnSkipNail.hidden = !nail;
     if (mode === 'live') { ST.guideState = 'idle'; setHint(liveHint('none')); }
     if (mode !== 'live') stopAlign();
     if (mode === 'adjust') setHint('사진을 끌고 크기를 맞춰 틀 안에 넣어주세요');
@@ -3733,7 +3885,7 @@ const App = (function () {
   function liveHint(h) {
     return h === 'ok' ? '좋아요! 지금 찍으세요' : h === 'dark' ? '너무 어두워요. 밝은 곳에서'
       : h === 'thumb' ? `엄지 방향이 달라요. ${handName()} 손바닥이 맞나요?` : h === 'far' ? '손이 틀보다 커요. 조금 멀리'
-      : `${handName()} 손바닥을 틀에 맞춰주세요`;
+      : `${handName()} 손바닥을 쫙 펴서 틀에 채워주세요`;
   }
   /* 틀 안의 영상을 원본(거울 반전 전) 좌표로 옮긴다 */
   function liveBox() {
@@ -3748,6 +3900,7 @@ const App = (function () {
   function stopAlign() { if (alignTimer) { clearInterval(alignTimer); alignTimer = 0; } }
   function startAlign() {
     stopAlign();
+    if (ST.step === 'nail') { ST.guideState = 'idle'; setHint('엄지 손톱 한 개를 틀 안에 크게'); paintGuide(); return; }
     alignTimer = setInterval(() => {
       if (ST.mode !== 'live' || ST.screen !== 'capture') { stopAlign(); return; }
       const g = liveBox();
@@ -3759,7 +3912,7 @@ const App = (function () {
       c.drawImage(el.video, g.x, g.y, g.w, g.h, 0, 0, 75, 105);
       c.restore();
       let q = null;
-      try { q = PalmReader.quickAlign(alignCanvas); } catch (e) { q = null; }
+      try { q = PalmReader.quickAlign(alignCanvas, true); } catch (e) { q = null; }
       if (!q) return;
       const state = q.hint === 'ok' ? 'ok' : q.hint === 'none' ? 'idle' : 'warn';
       setHint(liveHint(q.hint), q.hint === 'ok');
@@ -3811,6 +3964,14 @@ const App = (function () {
   function shootLive() {
     const v = el.video;
     if (!v.videoWidth) { toast('카메라가 아직 준비되지 않았어요. 잠시 후 다시 눌러주세요.'); return; }
+    if (ST.step === 'nail') {
+      const g = liveBox(), nc = document.createElement('canvas');
+      nc.width = 200; nc.height = 250;
+      if (!g) return;
+      nc.getContext('2d', { willReadFrequently: true }).drawImage(v, g.x, g.y, g.w, g.h, 0, 0, 200, 250);
+      readNail(nc);
+      return;
+    }
     const c = document.createElement('canvas');
     c.width = v.videoWidth; c.height = v.videoHeight;
     c.getContext('2d').drawImage(v, 0, 0);        // 저장은 거울 반전 없이, 실제 모습 그대로
@@ -3835,7 +3996,48 @@ const App = (function () {
     img.src = url;
   }
   function loadPhoto(file) {
-    if (file) setPhoto(URL.createObjectURL(file));
+    if (!file) return;
+    if (ST.step === 'nail') { loadNail(file); return; }
+    setPhoto(URL.createObjectURL(file));
+  }
+
+  /* ---------- 손톱 ---------- */
+  /* 손바닥 사진을 받은 다음: 손톱을 아직 안 찍었으면 손톱 단계로, 찍었거나 건너뛰었으면 판독으로 */
+  function afterPalm(preFail) {
+    if (preFail || ST.nail !== undefined) { runScan(preFail); return; }
+    ST.step = 'nail';
+    if (ST.screen !== 'capture') show('capture');
+    setMode('choose');
+    if (canLive()) startCamera();
+  }
+  function readNail(canvas) {
+    let r = null;
+    try { r = PalmReader.analyzeNail(canvas); } catch (e) { r = null; }
+    if (!r || !r.ok) {
+      toast(r && r.reason === 'dark' ? '너무 어두워요. 밝은 곳에서 다시 찍어주세요.' : '손톱이 잘 보이지 않아요. 손톱 한 개를 크게 맞춰 다시 찍어주세요.');
+      return;
+    }
+    ST.nail = r;
+    stopCamera();
+    runScan(null);
+  }
+  /* 틀 없이 받은 손톱 사진: 한가운데를 손톱으로 본다 */
+  function loadNail(file) {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const iw = img.naturalWidth, ih = img.naturalHeight, s = 0.5 * Math.min(iw, ih * 0.8), c = document.createElement('canvas');
+      c.width = 200; c.height = 250;
+      c.getContext('2d', { willReadFrequently: true }).drawImage(img, (iw - s) / 2, (ih - s * 1.25) / 2, s, s * 1.25, 0, 0, 200, 250);
+      URL.revokeObjectURL(url);
+      readNail(c);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); toast('사진을 열 수 없어요. 다른 사진을 골라주세요.'); };
+    img.src = url;
+  }
+  function skipNail() {
+    ST.nail = null;
+    stopCamera();
+    runScan(null);
   }
   function autoRead(allowRotate, guide) {
     const p = ST.photo, left = ST.profile.hand === 'left';
@@ -3849,16 +4051,17 @@ const App = (function () {
         && Math.abs((f.oy + HAND.H * f.s / 2) - (guide.y + guide.h / 2)) < guide.h * 0.4;
       if (!near) f = { ok: true, flip: left, s: gs, ox: guide.x, oy: guide.y };
     }
+    ST.palmOnly = !!guide;
     if (f && f.rot) { rotatePhoto(f.rot, false); return; }       // 옆으로 누운 사진은 세운 뒤 다시 찾는다
     ST.fromPhoto = true;
     if (f && f.ok) {
       ST.hand = PalmReader.cropByFit(el.photo, p.iw, p.ih, f);
       ST.captureFlip = !!f.flip;
-      runScan(null);
+      afterPalm(null);
     } else {
       ST.hand = null;
       ST.captureFlip = false;
-      runScan('no_palm');
+      afterPalm('no_palm');
     }
   }
   function rotatePhoto(quarter, adjust) {
@@ -3876,6 +4079,7 @@ const App = (function () {
 
   /* 직접 맞추기: 자동으로 손을 못 찾았을 때만 */
   function enterAdjust() {
+    ST.step = 'palm';
     if (ST.screen !== 'capture') show('capture');
     setMode('adjust');
     layoutStage();
@@ -3966,7 +4170,9 @@ const App = (function () {
     });
   }
 
-  function goCapture() {
+  function goCapture(fresh) {
+    ST.step = 'palm';
+    if (fresh) ST.nail = undefined;      // 새 판: 손톱도 다시 찍는다 (손바닥만 다시 찍을 때는 손톱을 그대로 둔다)
     show('capture');
     setMode('choose');
     if (canLive()) startCamera();      // 틀이 있는 화면 안 카메라를 곧바로 연다
@@ -3979,7 +4185,8 @@ const App = (function () {
     ST.hand = c;
     ST.captureFlip = ST.guideFlip;
     ST.fromPhoto = true;
-    runScan(null);
+    ST.palmOnly = true;
+    afterPalm(null);
   }
 
   /* ---------- 판독 ---------- */
@@ -4007,7 +4214,8 @@ const App = (function () {
     await wait(90);
     let a;
     if (preFail) a = { ok: false, reason: preFail, quality: {} };
-    else { try { a = PalmReader.analyze(ST.hand); } catch (e) { a = { ok: false, reason: 'faint', quality: {} }; } }
+    else { try { a = PalmReader.analyze(ST.hand, { palmOnly: ST.palmOnly }); } catch (e) { a = { ok: false, reason: 'faint', quality: {} }; } }
+    if (a.ok) a.nail = ST.nail || null;
     const failAt = a.ok ? -1 : ({ no_palm: 0, no_hand: 0, misaligned: 0, thumb: 0, background: 0, too_dark: 1, too_bright: 1, faint: 2 })[a.reason];
     const stepMs = reduceMotion ? 40 : 430;
     for (let i = 0; i < steps.length; i++) {
@@ -4313,7 +4521,7 @@ const App = (function () {
 
   /* ---------- 시작 ---------- */
   async function init() {
-    for (const id of ['introArt', 'refBanner', 'btnStart', 'chanceLine', 'btnLast', 'modeLine', 'btnBack', 'capTitle', 'chooseBox', 'stageBox', 'btnCam', 'btnCancelCam',
+    for (const id of ['introArt', 'refBanner', 'btnStart', 'chanceLine', 'btnLast', 'modeLine', 'btnBack', 'capTitle', 'chooseBox', 'stageBox', 'btnCam', 'btnCancelCam', 'tipsPalm', 'tipsNail', 'chooseNote', 'btnSkipNail',
       'stage', 'video', 'photo', 'guide', 'hint',
       'liveControls', 'photoControls', 'btnShoot', 'btnSwitch', 'zoom', 'btnUsePhoto', 'btnRotate', 'btnFlipHand', 'filePick', 'fileShoot', 'btnSetupBack', 'btnSetupGo', 'setupNote',
       'scanTitle', 'scanCanvas', 'scanSteps', 'retake', 'retakeTitle', 'retakeTip', 'btnRetake', 'btnAdjust',
@@ -4334,7 +4542,8 @@ const App = (function () {
     el.btnFlipHand.addEventListener('click', () => { ST.flipManual = !ST.flipManual; refreshFlip(); });
     el.btnRotate.addEventListener('click', () => rotatePhoto(1, true));
     el.btnSetupBack.addEventListener('click', () => { show('intro'); updateIntro(); });
-    el.btnSetupGo.addEventListener('click', goCapture);
+    el.btnSetupGo.addEventListener('click', () => goCapture(true));
+    el.btnSkipNail.addEventListener('click', skipNail);
     document.addEventListener('change', (e) => {
       const t = e.target;
       if (!t || t.type !== 'radio') return;
@@ -4347,7 +4556,7 @@ const App = (function () {
     for (const input of [el.filePick, el.fileShoot]) {
       input.addEventListener('change', () => { loadPhoto(input.files && input.files[0]); input.value = ''; });
     }
-    el.btnRetake.addEventListener('click', goCapture);
+    el.btnRetake.addEventListener('click', () => goCapture(false));
     el.btnAdjust.addEventListener('click', () => { if (ST.photo.url) { show('capture'); enterAdjust(); } });
     el.btnShare.addEventListener('click', shareImage);
     el.btnSave.addEventListener('click', saveImage);
