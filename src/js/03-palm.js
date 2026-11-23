@@ -206,6 +206,8 @@ const PalmReader = (function () {
   /* opt.palmOnly: 손바닥만 틀에 맞춰 찍은 사진. 손가락·엄지가 화면 밖일 수 있으므로 손바닥 부분만으로 정렬을 본다. */
   function analyze(srcCanvas, opt) {
     const palmOnly = !!(opt && opt.palmOnly);
+    // relax: 실제 사진은 피부 결(잔주름·모공) 때문에 잡음 바닥이 높아 선이 묻히기 쉽다. 엄격한 기준으로 못 읽으면 기준을 낮춰 한 번 더 본다.
+    const relax = !!(opt && opt.relax);
     const ctx = srcCanvas.getContext('2d', { willReadFrequently: true });
     const img = ctx.getImageData(0, 0, W, H).data;
     const shape = shapeMasks();
@@ -231,7 +233,7 @@ const PalmReader = (function () {
 
     /* 2) 가이드와 손이 맞았는지 */
     const skin = new Uint8Array(W * H);
-    const tC = 17, yMin = 0.35 * Y0;
+    const tC = palmOnly ? 21 : 17, yMin = 0.35 * Y0;
     for (let p = 0, i = 0; p < W * H; p++, i += 4) {
       const r = img[i], g = img[i + 1], b = img[i + 2];
       const Y = 0.299 * r + 0.587 * g + 0.114 * b;
@@ -255,7 +257,7 @@ const PalmReader = (function () {
     q.thumb = +(tS / Math.max(1, tN)).toFixed(3);
     q.outside = +(oS / Math.max(1, oN)).toFixed(3);
     q.palmOnly = palmOnly;
-    if (!skinLike || q.inside < (palmOnly ? 0.72 : 0.55)) return fail('no_hand');
+    if (!skinLike || q.inside < (palmOnly ? 0.6 : 0.55)) return fail('no_hand');
     if (!palmOnly) {
       if (q.thumb < 0.25) return fail('thumb');
       if (q.fingers < 0.3) return fail('misaligned');
@@ -287,7 +289,7 @@ const PalmReader = (function () {
     bgN = bgD = null;
 
     const lam = new Float32Array(n), th = new Float32Array(n);
-    for (const sigma of [1.5, 2.6]) {
+    for (const sigma of [1.5, 2.6, 3.8]) {      // 큰 척도까지 보면 굵은 손금은 살고 잔주름은 묻힌다
       const b = gaussBlur(gn, PW, PH, sigma), s2 = sigma * sigma;
       for (let y = 1; y < PH - 1; y++) for (let x = 1; x < PW - 1; x++) {
         const i = y * PW + x;
@@ -304,7 +306,8 @@ const PalmReader = (function () {
     for (let i = 0; i < n; i += 7) if (maskE[i]) sample.push(lam[i]);
     if (sample.length < 400) return fail('no_hand');
     const p50 = quantile(sample, 0.5), p85 = quantile(sample, 0.85);
-    const thr = Math.min(3.2, Math.max(0.9, 1.5 * p85));
+    const thr = relax ? Math.min(2.6, Math.max(0.75, 1.12 * p85)) : Math.min(3.2, Math.max(0.9, 1.5 * p85));
+    q.relaxed = relax;
     q.noise = +p85.toFixed(2);
     q.thr = +thr.toFixed(2);
 
