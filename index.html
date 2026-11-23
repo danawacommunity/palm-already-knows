@@ -502,6 +502,7 @@ body {
         <p class="retake-kicker">다시 찍어주세요</p>
         <h3 id="retakeTitle"></h3>
         <p id="retakeTip"></p>
+        <p id="retakeCode" class="fine"></p>
         <button id="btnRetake" class="btn btn-primary" type="button">다시 찍기</button>
         <button id="btnAdjust" class="btn btn-ghost" type="button" hidden>이 사진에서 직접 맞추기</button>
         <p class="fine">다시 찍어도 기회는 줄어들지 않아요.</p>
@@ -1513,6 +1514,8 @@ const PalmReader = (function () {
   /* opt.palmOnly: 손바닥만 틀에 맞춰 찍은 사진. 손가락·엄지가 화면 밖일 수 있으므로 손바닥 부분만으로 정렬을 본다. */
   function analyze(srcCanvas, opt) {
     const palmOnly = !!(opt && opt.palmOnly);
+    // relax: 실제 사진은 피부 결(잔주름·모공) 때문에 잡음 바닥이 높아 선이 묻히기 쉽다. 엄격한 기준으로 못 읽으면 기준을 낮춰 한 번 더 본다.
+    const relax = !!(opt && opt.relax);
     const ctx = srcCanvas.getContext('2d', { willReadFrequently: true });
     const img = ctx.getImageData(0, 0, W, H).data;
     const shape = shapeMasks();
@@ -1538,7 +1541,7 @@ const PalmReader = (function () {
 
     /* 2) 가이드와 손이 맞았는지 */
     const skin = new Uint8Array(W * H);
-    const tC = 17, yMin = 0.35 * Y0;
+    const tC = palmOnly ? 21 : 17, yMin = 0.35 * Y0;
     for (let p = 0, i = 0; p < W * H; p++, i += 4) {
       const r = img[i], g = img[i + 1], b = img[i + 2];
       const Y = 0.299 * r + 0.587 * g + 0.114 * b;
@@ -1562,7 +1565,7 @@ const PalmReader = (function () {
     q.thumb = +(tS / Math.max(1, tN)).toFixed(3);
     q.outside = +(oS / Math.max(1, oN)).toFixed(3);
     q.palmOnly = palmOnly;
-    if (!skinLike || q.inside < (palmOnly ? 0.72 : 0.55)) return fail('no_hand');
+    if (!skinLike || q.inside < (palmOnly ? 0.6 : 0.55)) return fail('no_hand');
     if (!palmOnly) {
       if (q.thumb < 0.25) return fail('thumb');
       if (q.fingers < 0.3) return fail('misaligned');
@@ -1594,7 +1597,7 @@ const PalmReader = (function () {
     bgN = bgD = null;
 
     const lam = new Float32Array(n), th = new Float32Array(n);
-    for (const sigma of [1.5, 2.6]) {
+    for (const sigma of [1.5, 2.6, 3.8]) {      // 큰 척도까지 보면 굵은 손금은 살고 잔주름은 묻힌다
       const b = gaussBlur(gn, PW, PH, sigma), s2 = sigma * sigma;
       for (let y = 1; y < PH - 1; y++) for (let x = 1; x < PW - 1; x++) {
         const i = y * PW + x;
@@ -1611,7 +1614,8 @@ const PalmReader = (function () {
     for (let i = 0; i < n; i += 7) if (maskE[i]) sample.push(lam[i]);
     if (sample.length < 400) return fail('no_hand');
     const p50 = quantile(sample, 0.5), p85 = quantile(sample, 0.85);
-    const thr = Math.min(3.2, Math.max(0.9, 1.5 * p85));
+    const thr = relax ? Math.min(2.6, Math.max(0.75, 1.12 * p85)) : Math.min(3.2, Math.max(0.9, 1.5 * p85));
+    q.relaxed = relax;
     q.noise = +p85.toFixed(2);
     q.thr = +thr.toFixed(2);
 
@@ -4215,13 +4219,47 @@ const App = (function () {
       readNail(nc);
       return;
     }
+    // 흔들림을 줄이려고 0.15초 간격으로 3장을 찍어 가장 선명한 장을 쓴다
+    ST.busy = true;
+    setHint('찰칵! 흔들리지 마세요…', true);
+    burstSharpest(v, 3, 150).then((c) => finishLiveShot(c));
+  }
+  function frameOf(v) {
     const c = document.createElement('canvas');
     c.width = v.videoWidth; c.height = v.videoHeight;
-    c.getContext('2d').drawImage(v, 0, 0);        // 저장은 거울 반전 없이, 실제 모습 그대로
+    c.getContext('2d', { willReadFrequently: true }).drawImage(v, 0, 0);
+    return c;
+  }
+  /* 가운데 부분의 라플라시안 분산 = 선명도 */
+  function sharpness(c) {
+    const s = 160, g = document.createElement('canvas');
+    g.width = s; g.height = s;
+    const w = Math.min(c.width, c.height) * 0.6;
+    g.getContext('2d', { willReadFrequently: true }).drawImage(c, (c.width - w) / 2, (c.height - w) / 2, w, w, 0, 0, s, s);
+    const d = g.getContext('2d').getImageData(0, 0, s, s).data, Y = new Float32Array(s * s);
+    for (let i = 0; i < s * s; i++) Y[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+    let sum = 0, sum2 = 0, n = 0;
+    for (let y = 1; y < s - 1; y++) for (let x = 1; x < s - 1; x++) {
+      const i = y * s + x, l = Y[i - 1] + Y[i + 1] + Y[i - s] + Y[i + s] - 4 * Y[i];
+      sum += l; sum2 += l * l; n++;
+    }
+    return sum2 / n - (sum / n) * (sum / n);
+  }
+  async function burstSharpest(v, n, gapMs) {
+    let best = null, bestS = -1;
+    for (let k = 0; k < n; k++) {
+      if (k) await wait(gapMs);
+      if (!v.videoWidth) break;
+      const c = frameOf(v), s = sharpness(c);
+      if (s > bestS) { bestS = s; best = c; }
+    }
+    return best;
+  }
+  function finishLiveShot(c) {
+    if (!c) { ST.busy = false; return; }
     const gb = liveBox();                         // 찍는 순간 틀이 놓여 있던 자리
     // 카메라는 끄지 않는다: 손바닥을 바로 판별한 뒤 같은 카메라로 손톱까지 찍는다(권한을 다시 묻지 않게)
     ST.shotLive = true;
-    ST.busy = true;
     setHint('손바닥을 확인하는 중…');
     c.toBlob((blob) => { if (blob) setPhoto(URL.createObjectURL(blob), { guide: gb }); else ST.busy = false; }, 'image/jpeg', 0.95);
   }
@@ -4251,12 +4289,28 @@ const App = (function () {
 
   /* ---------- 손톱 ---------- */
   /* 손바닥 사진을 받은 다음: 손톱을 아직 안 찍었으면 손톱 단계로, 찍었거나 건너뛰었으면 판독으로 */
+  /* 다시 찍기 화면 아래 작은 진단 코드 (문의할 때 알려 주면 원인을 알 수 있다) */
+  function diagCode(a) {
+    const q = (a && a.quality) || {};
+    const parts = [a && a.reason, q.brightness != null ? 'B' + q.brightness : null, q.inside != null ? 'S' + Math.round(q.inside * 100) : null,
+      q.majors != null ? 'L' + q.majors : null, q.noise != null ? 'N' + q.noise : null, ST.palmOnly ? 'P' : 'F', ST.shotLive ? 'C' : 'A'];
+    return '(코드 ' + parts.filter((x) => x != null).join('-') + ')';
+  }
+  /* 손금 판독: 기준을 엄격하게 한 번, 선이 옅게만 보이면 기준을 낮춰 한 번 더 */
+  function analyzePalm(canvas) {
+    let a;
+    try { a = PalmReader.analyze(canvas, { palmOnly: ST.palmOnly }); } catch (e) { a = { ok: false, reason: 'faint', quality: {} }; }
+    if (!a.ok && a.reason === 'faint') {
+      try { const b = PalmReader.analyze(canvas, { palmOnly: ST.palmOnly, relax: true }); if (b.ok || (b.quality.majors || 0) > (a.quality.majors || 0)) a = b; } catch (e) { /* 그대로 */ }
+    }
+    return a;
+  }
   /* 손바닥 사진을 받으면 그 자리에서 판별한다.
    *   잘 찍혔으면 "잘 찍혔어요"라고 알리고 손톱 단계로, 아니면 이유를 알리고 손바닥을 다시 찍게 한다. */
   function afterPalm(preFail) {
     ST.busy = false;
     let a = null;
-    if (!preFail) { try { a = PalmReader.analyze(ST.hand, { palmOnly: ST.palmOnly }); } catch (e) { a = { ok: false, reason: 'faint', quality: {} }; } }
+    if (!preFail) a = analyzePalm(ST.hand);
     ST.analysis = a;
     const live = !!ST.stream && ST.screen === 'capture';
     if (preFail || !a.ok) {
@@ -4265,7 +4319,7 @@ const App = (function () {
         stopAlign();
         ST.guideState = 'warn'; paintGuide();
         setHint('다시 찍어주세요 · ' + r.title);
-        toast(r.tip);
+        toast(r.tip + ' ' + diagCode(a || { reason: preFail, quality: {} }));
         setTimeout(() => { if (ST.screen === 'capture' && ST.mode === 'live' && ST.step === 'palm' && ST.stream) startAlign(); }, 3000);
         return;
       }
@@ -4336,7 +4390,8 @@ const App = (function () {
       const near = f && f.ok && f.s > gs * 0.6 && f.s < gs * 1.6
         && Math.abs((f.ox + HAND.W * f.s / 2) - (guide.x + guide.w / 2)) < guide.w * 0.4
         && Math.abs((f.oy + HAND.H * f.s / 2) - (guide.y + guide.h / 2)) < guide.h * 0.4;
-      if (!near) f = { ok: true, flip: left, s: gs, ox: guide.x, oy: guide.y };
+      // 초록불을 보고 찍은 사진은 틀 자리를 그대로 믿는다. 손가락이 화면 밖이면 자동 찾기가 엉뚱한 자리를 잡을 수 있어서다.
+      if (!near || ST.shotLive) f = { ok: true, flip: left, s: gs, ox: guide.x, oy: guide.y };
     }
     ST.palmOnly = !!guide;
     if (f && f.rot) { rotatePhoto(f.rot, false); return; }       // 옆으로 누운 사진은 세운 뒤 다시 찾는다
@@ -4502,7 +4557,7 @@ const App = (function () {
     let a;
     if (preFail) a = { ok: false, reason: preFail, quality: {} };
     else if (ST.analysis) a = ST.analysis;      // 찍은 직후에 이미 판별해 둔 결과
-    else { try { a = PalmReader.analyze(ST.hand, { palmOnly: ST.palmOnly }); } catch (e) { a = { ok: false, reason: 'faint', quality: {} }; } }
+    else a = analyzePalm(ST.hand);
     if (a.ok) a.nail = ST.nail || null;
     const failAt = a.ok ? -1 : ({ no_palm: 0, no_hand: 0, misaligned: 0, thumb: 0, background: 0, too_dark: 1, too_bright: 1, faint: 2 })[a.reason];
     const stepMs = reduceMotion ? 40 : 430;
@@ -4526,6 +4581,7 @@ const App = (function () {
       el.scanSteps.hidden = true;
       el.retakeTitle.textContent = r.title;
       el.retakeTip.textContent = r.tip;
+      el.retakeCode.textContent = diagCode(a);
       el.btnAdjust.hidden = !(ST.photo.url && failAt === 0);     // 손을 못 찾은 경우에만 직접 맞추기를 권한다
       el.retake.hidden = false;
       ST.busy = false;
@@ -4931,7 +4987,7 @@ const App = (function () {
     for (const id of ['introArt', 'refBanner', 'btnStart', 'chanceLine', 'btnLast', 'modeLine', 'btnBack', 'capTitle', 'chooseBox', 'stageBox', 'btnCam', 'btnCancelCam', 'tipsPalm', 'tipsNail', 'chooseNote', 'btnSkipNail',
       'stage', 'video', 'photo', 'guide', 'hint',
       'liveControls', 'photoControls', 'btnShoot', 'btnSwitch', 'zoom', 'btnUsePhoto', 'btnRotate', 'btnFlipHand', 'filePick', 'fileShoot', 'btnSetupBack', 'btnSetupGo', 'setupNote',
-      'scanTitle', 'scanCanvas', 'scanSteps', 'retake', 'retakeTitle', 'retakeTip', 'btnRetake', 'btnAdjust',
+      'scanTitle', 'scanCanvas', 'scanSteps', 'retake', 'retakeTitle', 'retakeTip', 'retakeCode', 'btnRetake', 'btnAdjust',
       'carName', 'carKind', 'carSync', 'carTag', 'carLink', 'heroCanvas', 'profileLine', 'pickNav', 'pickPanels', 'panel1', 'panel2', 'panel3', 'panel4', 'traceCanvas', 'lineList', 'overall', 'nailList', 'nailNote', 'moreRead', 'reasons', 'bars',
       'btnShare', 'btnSave', 'btnCopy', 'btnAgain', 'againLine',
       'gate', 'gateClose', 'gateLinkBox', 'gateLink', 'gateCopy', 'gateShare', 'gateStatus', 'gateGo', 'gatePreview', 'gateSim', 'toast']) el[id] = $(id);
