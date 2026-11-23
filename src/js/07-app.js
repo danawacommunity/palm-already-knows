@@ -621,6 +621,8 @@ const App = (function () {
     el.carKind.textContent = car.kind;
     el.carSync.textContent = `싱크로율 ${res.sync}%`;
     el.carTag.textContent = car.tagline;
+    el.carLink.textContent = '';
+    el.carLink.append(danawaBtn(DANAWA.car(car.name), '가격·견적 보러 가기', '다나와자동차 · 트림별 가격 확인', true));
     const ex = Fortune.extras(res);
     ST.extras = ex;
     el.profileLine.textContent = `${profileText(ex.profile)} 기준 · ${ex.profile.hand === 'left' ? '왼손은 타고난 기질을 봅니다.' : '오른손은 살아오며 만든 기질을 봅니다.'}`;
@@ -692,6 +694,13 @@ const App = (function () {
     makeCard();
   }
   /* 자동차 말고 함께 추천하는 것들: 묶음마다 제목을 달아 한 번에 모두 보여 준다 */
+  /* 다나와로 가는 버튼 (새 창) */
+  function danawaBtn(href, main, sub, big) {
+    const a = node('a', 'dnw' + (big ? ' dnw-big' : ''));
+    a.href = href; a.target = '_blank'; a.rel = 'noopener';
+    a.append(node('span', 'dnw-logo', 'danawa'), node('b', null, main), node('span', 'dnw-sub', sub), node('span', 'dnw-arrow', '→'));
+    return a;
+  }
   function renderPicks(ex) {
     el.pickNav.textContent = '';
     el.pickPanels.textContent = '';
@@ -726,6 +735,12 @@ const App = (function () {
           body.append(box);
         }
         row.append(node('div', 'pick-cat', it.label), body);
+        if (DANAWA.has(it.cat)) {
+          const food = it.cat === 'food', brand = it.cat === 'brand' || it.cat === 'egear';
+          row.append(danawaBtn(DANAWA.product(it.cat, it.name),
+            food ? '다나와에서 장보기' : brand ? '다나와에서 상품 보기' : '다나와 최저가 보기',
+            food ? '간편식·재료 최저가' : brand ? '상품정보 확인' : '가격비교 · 상품정보 확인'));
+        }
         card.append(row);
       }
       el.pickPanels.append(sec);
@@ -901,7 +916,7 @@ const App = (function () {
       'stage', 'video', 'photo', 'guide', 'hint',
       'liveControls', 'photoControls', 'btnShoot', 'btnSwitch', 'zoom', 'btnUsePhoto', 'btnRotate', 'btnFlipHand', 'filePick', 'fileShoot', 'btnSetupBack', 'btnSetupGo', 'setupNote',
       'scanTitle', 'scanCanvas', 'scanSteps', 'retake', 'retakeTitle', 'retakeTip', 'btnRetake', 'btnAdjust',
-      'carName', 'carKind', 'carSync', 'carTag', 'heroCanvas', 'profileLine', 'pickNav', 'pickPanels', 'panel1', 'panel2', 'panel3', 'panel4', 'traceCanvas', 'lineList', 'overall', 'nailList', 'nailNote', 'moreRead', 'reasons', 'bars',
+      'carName', 'carKind', 'carSync', 'carTag', 'carLink', 'heroCanvas', 'profileLine', 'pickNav', 'pickPanels', 'panel1', 'panel2', 'panel3', 'panel4', 'traceCanvas', 'lineList', 'overall', 'nailList', 'nailNote', 'moreRead', 'reasons', 'bars',
       'btnShare', 'btnSave', 'btnCopy', 'btnAgain', 'againLine',
       'gate', 'gateClose', 'gateLinkBox', 'gateLink', 'gateCopy', 'gateShare', 'gateStatus', 'gateGo', 'gatePreview', 'gateSim', 'toast']) el[id] = $(id);
     el.scanStage = el.scanCanvas.parentElement;

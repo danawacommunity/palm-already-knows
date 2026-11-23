@@ -354,3 +354,34 @@ const PROFILE_LABEL = {
   gender: { m: '남자', f: '여자', u: '성별 모름' },
   age: { 10: '10대', 20: '20대', 30: '30대', 40: '40대', 50: '50대', 60: '60대 이상' },
 };
+/* 다나와 바로가기: 추천 항목 이름으로 다나와(또는 다나와자동차) 검색 주소를 만든다 */
+const DANAWA = (function () {
+  // 항목마다 검색어 끝에 붙일 품목 이름 (이미 들어 있으면 붙이지 않음)
+  const WORD = { tv: 'TV', fridge: '냉장고', kimchi: '김치냉장고', washer: '', aircon: '에어컨', styler: '', dish: '식기세척기', monitor: '모니터', mb: '메인보드', egear: '', watch: '시계' };
+  // 이름의 세 번째 조각이 "실제 제품 이름"인 항목 (나머지는 세 번째 조각이 설명이라 빼고 찾는다)
+  const PRODUCT3 = { cpu: 1, mouse: 1, keyboard: 1, pccase: 1, laptop: 1 };
+  const SHOP = { watch: 1, egear: 1, cpu: 1, mb: 1, mouse: 1, keyboard: 1, pccase: 1, laptop: 1, monitor: 1, tv: 1, fridge: 1, kimchi: 1, washer: 1, aircon: 1, styler: 1, dish: 1, brand: 1, food: 1 };
+  const clean = (s) => s.replace(/\([^)]*\)/g, ' ').replace(/(^|\s)시리즈(?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim();
+  // 이름만으로는 검색이 잘 안 되는 항목은 검색어를 직접 정해 둔다
+  const FIX = { 'AMD · 라이젠 · 내장 그래픽 G 시리즈': '라이젠 G 시리즈', '세이코 · 세이코 5 스포츠': '세이코5 스포츠', '그랜드 세이코 · 헤리티지 컬렉션': '그랜드세이코', '삼성전자 · 더 프리스타일 · 휴대용 프로젝터': '삼성전자 더 프리스타일', '쿨러마스터 · 마스터박스 · NR200P': 'NR200P' };
+  const dedupe = (q) => q.split(' ').filter((w, i, a) => a.indexOf(w) === i).join(' ');
+  function query(cat, name, override) {
+    if (override) return override;
+    if (FIX[name]) return FIX[name];
+    if (cat === 'food') return clean(name.split('·')[0]);
+    const p = name.split(' · ').map(clean);
+    let q;
+    if (cat === 'cpu') q = p[2] || p.join(' ');
+    else if (p.length >= 3) q = PRODUCT3[cat] ? `${p[0]} ${p[2].includes(p[1]) ? '' : p[1]} ${p[2]}` : `${p[0]} ${p[1]}`;
+    else q = p.join(' ');
+    const w = WORD[cat];
+    if (w && !q.includes(w)) q += ' ' + w;
+    return dedupe(q.replace(/\s+/g, ' ').trim());
+  }
+  return {
+    has: (cat) => !!SHOP[cat],
+    product: (cat, name, override) => 'https://search.danawa.com/dsearch.php?query=' + encodeURIComponent(query(cat, name, override)),
+    car: (name) => 'https://auto.danawa.com/search/?q=' + encodeURIComponent(name),
+    query,
+  };
+})();
