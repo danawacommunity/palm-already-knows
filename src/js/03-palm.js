@@ -203,7 +203,9 @@ const PalmReader = (function () {
   }
 
   /* ---------- 본 분석 ---------- */
-  function analyze(srcCanvas) {
+  /* opt.palmOnly: 손바닥만 틀에 맞춰 찍은 사진. 손가락·엄지가 화면 밖일 수 있으므로 손바닥 부분만으로 정렬을 본다. */
+  function analyze(srcCanvas, opt) {
+    const palmOnly = !!(opt && opt.palmOnly);
     const ctx = srcCanvas.getContext('2d', { willReadFrequently: true });
     const img = ctx.getImageData(0, 0, W, H).data;
     const shape = shapeMasks();
@@ -243,7 +245,7 @@ const PalmReader = (function () {
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const p = y * W + x;
       if (shape.inner[p]) {
-        inN++; inS += skin[p];
+        if (!palmOnly || (y >= fingerLimit && x < thumbLimit)) { inN++; inS += skin[p]; }
         if (y < fingerLimit) { fN++; fS += skin[p]; }
         if (x >= thumbLimit) { tN++; tS += skin[p]; }
       } else if (!shape.outer[p]) { oN++; oS += skin[p]; }
@@ -252,10 +254,13 @@ const PalmReader = (function () {
     q.fingers = +(fS / fN).toFixed(3);
     q.thumb = +(tS / Math.max(1, tN)).toFixed(3);
     q.outside = +(oS / Math.max(1, oN)).toFixed(3);
-    if (!skinLike || q.inside < 0.55) return fail('no_hand');
-    if (q.thumb < 0.25) return fail('thumb');
-    if (q.fingers < 0.3) return fail('misaligned');
-    if (q.outside > 0.72) return fail('background');
+    q.palmOnly = palmOnly;
+    if (!skinLike || q.inside < (palmOnly ? 0.72 : 0.55)) return fail('no_hand');
+    if (!palmOnly) {
+      if (q.thumb < 0.25) return fail('thumb');
+      if (q.fingers < 0.3) return fail('misaligned');
+      if (q.outside > 0.72) return fail('background');
+    }
 
     /* 3) 손바닥 영역: 조명 고르기 + 골(주름) 필터 */
     const n = PW * PH;
@@ -641,7 +646,7 @@ const PalmReader = (function () {
 
     const found = [life, heart, head, fate].filter((l) => l.found);
     q.clarity = Math.round(100 * clamp01((found.reduce((s, l) => s + contrast(l.mean), 0) / found.length - 0.02) / 0.12));
-    return { ok: true, quality: q, lines, marks, special, mounts, shape: handShape(skin) };
+    return { ok: true, quality: q, lines, marks, special, mounts, shape: null };      // 손가락은 읽지 않는다(손바닥만)
   }
 
   /* 손 모양: 손가락 끝 네 곳과 엄지 끝을 찾아 손가락 길이, 검지·약지 차이, 엄지 각도를 잰다.
@@ -710,18 +715,19 @@ const PalmReader = (function () {
 
   /* 촬영 전 실시간 안내용: 작은 화면에서 정렬 상태만 빠르게 본다 (0~1) */
   let _mini = null;
-  function quickAlign(canvas) {
+  function quickAlign(canvas, palmOnly) {
     const w = canvas.width, h = canvas.height;
-    if (!_mini || _mini.w !== w) {
+    palmOnly = !!palmOnly;
+    if (!_mini || _mini.w !== w || _mini.palm !== palmOnly) {
       const c = document.createElement('canvas');
       c.width = w; c.height = h;
       const g = c.getContext('2d', { willReadFrequently: true });
       g.scale(w / HAND.W, h / HAND.H);
       g.fillStyle = '#fff';
-      fillHandShape(g, -5);
+      if (palmOnly) fillPalmShape(g, -9); else fillHandShape(g, -5);
       const d = g.getImageData(0, 0, w, h).data, m = new Uint8Array(w * h);
       for (let i = 0; i < m.length; i++) m[i] = d[i * 4 + 3] > 127 ? 1 : 0;
-      _mini = { w, m };
+      _mini = { w, m, palm: palmOnly };
     }
     const d = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data;
     const cx = Math.round(HAND.center.x * w / HAND.W), cy = Math.round(HAND.center.y * h / HAND.H), cr = Math.round(HAND.center.r * w / HAND.W);
@@ -746,6 +752,7 @@ const PalmReader = (function () {
       if (_mini.m[p]) { inN++; inS += s; if (p % w >= thumbX) { tN++; tS += s; } } else { oN++; oS += s; }
     }
     const inside = inS / inN, outside = oS / oN;
+    if (palmOnly) return { score: inside, hint: inside >= 0.86 ? 'ok' : 'none' };
     if (inside < 0.6) return { score: inside, hint: 'none' };
     if (tS / Math.max(1, tN) < 0.35) return { score: 0.5, hint: 'thumb' };
     if (outside > 0.65) return { score: 0.5, hint: 'far' };
@@ -971,5 +978,61 @@ const PalmReader = (function () {
     return fit;
   }
 
-  return { analyze, quickAlign, autoFit, cropByFit, SIZE: { W, H, S } };
+  /* ============================================================
+   * 손톱 판독 (엄지 손톱 한 개를 틀에 맞춰 찍은 작은 사진)
+   *   가운데 색을 손톱 색으로 보고, 거기서부터 색이 비슷하고 경계(큰 밝기 변화)를 넘지 않는 범위를 손톱으로 본다.
+   *   → 세로/가로 비율(모양), 붉은 기(빛깔), 뿌리 쪽의 밝은 반달 유무
+   * ============================================================ */
+  function analyzeNail(canvas) {
+    const w = canvas.width, h = canvas.height;
+    const d = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data;
+    const n = w * h, Y = new Float32Array(n), Cb = new Float32Array(n), Cr = new Float32Array(n);
+    for (let p = 0, i = 0; p < n; p++, i += 4) {
+      const r = d[i], g = d[i + 1], b = d[i + 2];
+      Y[p] = 0.299 * r + 0.587 * g + 0.114 * b;
+      Cb[p] = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+      Cr[p] = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+    }
+    const cx = w >> 1, cy = h >> 1, rr = Math.round(w * 0.1), ys = [], bs = [], rs = [];
+    for (let y = cy - rr; y <= cy + rr; y++) for (let x = cx - rr; x <= cx + rr; x++) { const p = y * w + x; ys.push(Y[p]); bs.push(Cb[p]); rs.push(Cr[p]); }
+    const Y0 = median(ys), Cb0 = median(bs), Cr0 = median(rs);
+    if (Y0 < 45) return { ok: false, reason: 'dark' };
+    if (!(Cr0 - Cb0 >= 4 && Cr0 >= 124 && Cr0 <= 205 && Cb0 >= 70 && Cb0 <= 142)) return { ok: false, reason: 'none' };
+    // 가운데에서 번져 나가며 손톱 영역 찾기
+    const mask = new Uint8Array(n), stack = [cy * w + cx];
+    mask[cy * w + cx] = 1;
+    let cnt = 0, x0 = w, x1 = 0, y0 = h, y1 = 0;
+    const okPix = (p, q) => Math.abs(Cb[p] - Cb0) <= 8 && Math.abs(Cr[p] - Cr0) <= 8 && Y[p] >= 0.72 * Y0 && Math.abs(Y[p] - Y[q]) <= 9;
+    while (stack.length) {
+      const p = stack.pop(), x = p % w, y = (p / w) | 0;
+      cnt++;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      if (x > 0 && !mask[p - 1] && okPix(p - 1, p)) { mask[p - 1] = 1; stack.push(p - 1); }
+      if (x < w - 1 && !mask[p + 1] && okPix(p + 1, p)) { mask[p + 1] = 1; stack.push(p + 1); }
+      if (y > 0 && !mask[p - w] && okPix(p - w, p)) { mask[p - w] = 1; stack.push(p - w); }
+      if (y < h - 1 && !mask[p + w] && okPix(p + w, p)) { mask[p + w] = 1; stack.push(p + w); }
+    }
+    const bw = x1 - x0 + 1, bh = y1 - y0 + 1, frac = cnt / n;
+    const edges = (x0 <= 1) + (x1 >= w - 2) + (y0 <= 1) + (y1 >= h - 2);
+    // 영역이 너무 작거나 틀 밖으로 번졌으면 모양은 읽지 못한 것으로 둔다
+    const ratio = frac >= 0.05 && frac <= 0.8 && edges <= 1 && cnt / (bw * bh) >= 0.55 ? +(bh / bw).toFixed(2) : null;
+    // 반달: 손톱 영역의 위·아래 끝 30% 중 한쪽에, 더 밝고 덜 붉은 부분이 뭉쳐 있는가
+    let moon = false, moonSide = null;
+    if (ratio != null) {
+      const band = (ya, yb) => {
+        let t = 0, m = 0;
+        // 반달은 색이 달라 손톱 영역에서 빠지므로, 손톱 상자 안 전체에서 센다
+        for (let y = Math.max(0, ya); y <= Math.min(h - 1, yb); y++) for (let x = x0; x <= x1; x++) { const p = y * w + x; t++; if (Y[p] > Y0 + 9 && (Cr[p] - Cb[p]) < (Cr0 - Cb0) - 2 && Cr[p] >= Cb[p]) m++; }
+        return t ? m / t : 0;
+      };
+      const k = Math.round(bh * 0.3);
+      const top = band(y0, y0 + k), bottom = band(y1 - k, y1);
+      moon = Math.max(top, bottom) >= 0.14;
+      if (moon) moonSide = top > bottom ? 'top' : 'bottom';
+    }
+    return { ok: true, ratio, pink: Math.round(Cr0 - Cb0), bright: Math.round(Y0), moon, moonSide, area: +frac.toFixed(3),
+      box: ratio != null ? [x0, y0, x1, y1] : null, size: [w, h] };
+  }
+
+  return { analyze, analyzeNail, quickAlign, autoFit, cropByFit, SIZE: { W, H, S } };
 })();

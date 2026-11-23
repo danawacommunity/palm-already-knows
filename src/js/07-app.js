@@ -373,6 +373,7 @@ const App = (function () {
       return;
     }
     ST.nail = r;
+    ST.nailImg = canvas;
     stopCamera();
     runScan(null);
   }
@@ -391,6 +392,7 @@ const App = (function () {
   }
   function skipNail() {
     ST.nail = null;
+    ST.nailImg = null;
     stopCamera();
     runScan(null);
   }
@@ -549,7 +551,7 @@ const App = (function () {
     ST.busy = true;
     show('scan');
     const steps = [...el.scanSteps.children];
-    steps.forEach((li) => li.classList.remove('on', 'fail'));
+    steps.forEach((li) => { li.classList.remove('on', 'fail', 'skip'); if (li.dataset.base) li.textContent = li.dataset.base; else li.dataset.base = li.textContent; });
     el.retake.hidden = true;
     el.scanSteps.hidden = false;
     el.scanTitle.textContent = '손금을 읽는 중…';
@@ -574,7 +576,15 @@ const App = (function () {
     if (a.ok) a.nail = ST.nail || null;
     const failAt = a.ok ? -1 : ({ no_palm: 0, no_hand: 0, misaligned: 0, thumb: 0, background: 0, too_dark: 1, too_bright: 1, faint: 2 })[a.reason];
     const stepMs = reduceMotion ? 40 : 430;
+    const nailFrom = steps.findIndex((li) => li.classList.contains('nailstep'));
     for (let i = 0; i < steps.length; i++) {
+      if (i === nailFrom && a.ok) {
+        if (ST.nail && ST.nailImg) { await scanNail(steps.slice(i, i + 3), stepMs); }
+        else { for (const li of steps.slice(i, i + 3)) { li.classList.add('skip'); li.textContent = li.dataset.base + ' · 건너뜀'; } }
+        i += 2;
+        el.scanTitle.textContent = '손금과 손톱을 맞춰 보는 중…';
+        continue;
+      }
       await wait(stepMs);
       if (i === failAt) { steps[i].classList.add('fail'); break; }
       steps[i].classList.add('on');
@@ -606,6 +616,73 @@ const App = (function () {
     await renderResult();
     show('result');
     ST.busy = false;
+  }
+
+  /* 손바닥에 이어 손톱도 스캔하는 장면: 손톱 사진으로 바꾸고, 테두리 → 모양·빛깔 → 반달을 차례로 표시 */
+  async function scanNail(steps3, stepMs) {
+    const nl = ST.nail, img = ST.nailImg, sc = el.scanCanvas.getContext('2d');
+    el.scanTitle.textContent = '이번엔 손톱을 읽는 중…';
+    // 스캔 막대를 처음부터 다시
+    el.scanStage.classList.remove('done');
+    const bar = $('scanbar');
+    bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = '';
+    const k = Math.min(560 / img.width, 800 / img.height), dw = img.width * k, dh = img.height * k, dx = (600 - dw) / 2, dy = (840 - dh) / 2;
+    const base = () => {
+      sc.fillStyle = '#14100C'; sc.fillRect(0, 0, 600, 840);
+      sc.drawImage(img, dx, dy, dw, dh);
+    };
+    const label = (text, y) => {
+      sc.font = '700 30px Jua, sans-serif';
+      const w = sc.measureText(text).width + 36;
+      sc.fillStyle = 'rgba(20,16,12,0.82)';
+      sc.beginPath(); sc.roundRect(300 - w / 2, y - 24, w, 48, 24); sc.fill();
+      sc.fillStyle = '#FFF8E1'; sc.textAlign = 'center'; sc.textBaseline = 'middle';
+      sc.fillText(text, 300, y + 1);
+    };
+    base();
+    await wait(stepMs);
+    // 1) 테두리
+    let bx = null;
+    if (nl.box) {
+      const [x0, y0, x1, y1] = nl.box;
+      bx = { x: dx + x0 * k, y: dy + y0 * k, w: (x1 - x0 + 1) * k, h: (y1 - y0 + 1) * k };
+      sc.strokeStyle = '#5BE49B'; sc.lineWidth = 6; sc.setLineDash([16, 10]);
+      sc.beginPath(); sc.roundRect(bx.x, bx.y, bx.w, bx.h, Math.min(bx.w, bx.h) * 0.3); sc.stroke();
+      sc.setLineDash([]);
+    }
+    label(nl.box ? '손톱 테두리를 찾았어요' : '테두리가 흐려 색으로 읽어요', 70);
+    steps3[0].classList.add('on');
+    await wait(stepMs * 1.6);
+    // 2) 모양과 빛깔
+    base();
+    if (bx) {
+      sc.strokeStyle = '#5BE49B'; sc.lineWidth = 6;
+      sc.beginPath(); sc.roundRect(bx.x, bx.y, bx.w, bx.h, Math.min(bx.w, bx.h) * 0.3); sc.stroke();
+      // 세로·가로 치수선
+      sc.strokeStyle = '#FFD23F'; sc.lineWidth = 4;
+      sc.beginPath(); sc.moveTo(bx.x - 22, bx.y); sc.lineTo(bx.x - 22, bx.y + bx.h); sc.stroke();
+      sc.beginPath(); sc.moveTo(bx.x, bx.y + bx.h + 22); sc.lineTo(bx.x + bx.w, bx.y + bx.h + 22); sc.stroke();
+    }
+    const shape = nl.ratio == null ? '모양 판독 불가' : nl.ratio >= 1.2 ? '세로로 긴 손톱' : nl.ratio <= 0.95 ? '가로로 넓은 손톱' : '고른 손톱';
+    label(nl.ratio == null ? shape : `세로÷가로 ${nl.ratio.toFixed(2)} · ${shape}`, 70);
+    // 빛깔 견본
+    const rgb = (() => { const d = img.getContext('2d').getImageData(img.width / 2 - 6, img.height / 2 - 6, 12, 12).data; let r = 0, g = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; } const n = d.length / 4; return `rgb(${Math.round(r / n)},${Math.round(g / n)},${Math.round(b / n)})`; })();
+    sc.fillStyle = rgb; sc.strokeStyle = '#FFF8E1'; sc.lineWidth = 5;
+    sc.beginPath(); sc.arc(520, 760, 40, 0, Math.PI * 2); sc.fill(); sc.stroke();
+    sc.fillStyle = '#FFF8E1'; sc.font = '700 24px Jua, sans-serif'; sc.textAlign = 'right'; sc.textBaseline = 'middle';
+    sc.fillText('손톱 빛깔', 466, 760);
+    steps3[1].classList.add('on');
+    await wait(stepMs * 1.6);
+    // 3) 반달
+    if (bx && nl.moon) {
+      const my = nl.moonSide === 'top' ? bx.y + bx.h * 0.15 : bx.y + bx.h * 0.85;
+      sc.strokeStyle = '#FFFFFF'; sc.lineWidth = 5;
+      sc.beginPath(); sc.ellipse(bx.x + bx.w / 2, my, bx.w * 0.3, bx.h * 0.13, 0, 0, Math.PI * 2); sc.stroke();
+    }
+    label(nl.moon ? '반달이 또렷해요' : '반달은 뚜렷하지 않아요', 140);
+    steps3[2].classList.add('on');
+    await wait(stepMs * 1.4);
+    el.scanStage.classList.add('done');
   }
 
   /* ---------- 결과 ---------- */
