@@ -18,6 +18,9 @@ const App = (function () {
     photoFlip: null,         // 사진에서 자동으로 찾은 손의 방향
     profile: { hand: 'right', gender: null, age: null },
     guideState: 'idle',
+    step: 'palm',            // palm(손바닥) → nail(엄지 손톱)
+    nail: undefined,         // undefined: 아직 안 찍음 · null: 건너뜀 · 객체: 판독 결과
+    palmOnly: false,         // 손바닥만 틀에 맞춘 사진인가
     box: null,               // 가이드 상자 (촬영 화면 기준 CSS px)
     photo: { url: null, iw: 0, ih: 0, tx: 0, ty: 0, z: 1, zMin: 0.1, zMax: 5 },
     hand: null, captureFlip: false, fromPhoto: false,
@@ -137,17 +140,27 @@ const App = (function () {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     el.guide.width = Math.round(w * dpr);
     el.guide.height = Math.round(h * dpr);
-    let bh = h * 0.84, bw = bh * HAND.W / HAND.H;
-    if (bw > w * 0.92) { bw = w * 0.92; bh = bw * HAND.H / HAND.W; }
-    ST.box = { x: (w - bw) / 2, y: (h - bh) / 2 + h * 0.03, w: bw, h: bh };
+    if (ST.step === 'nail') {
+      // 손톱 한 개가 들어갈 작은 틀
+      const bw = w * 0.5, bh = bw * 1.25;
+      ST.box = { x: (w - bw) / 2, y: (h - bh) / 2 + h * 0.02, w: bw, h: bh };
+    } else {
+      // 손바닥만 화면에 크게: 손 도형 상자는 화면보다 크게 잡고, 그중 손바닥 부분이 가운데에 오게 한다(손가락은 화면 밖이어도 된다)
+      const PBX = HAND.palmBox;
+      let bw = w * 0.8 * HAND.W / PBX.w, bh = bw * HAND.H / HAND.W;
+      const maxH = h * 0.74 * HAND.H / PBX.h;
+      if (bh > maxH) { bh = maxH; bw = bh * HAND.W / HAND.H; }
+      ST.box = { x: w / 2 - bw / 2, y: h * 0.53 - (PBX.y + PBX.h / 2) / HAND.H * bh, w: bw, h: bh };
+    }
     paintGuide();
   }
   function paintGuide() {
     if (ST.mode === 'choose' || !ST.box || !el.guide.width) return;
     const k = el.guide.width / el.stage.clientWidth, b = ST.box;
     // 카메라 화면이 거울처럼 보일 때는 틀도 좌우를 바꿔 그린다
-    const flip = ST.mode === 'live' ? (ST.profile.hand === 'left') !== ST.mirrored : ST.guideFlip;
-    Draw.drawGuide(el.guide, { x: b.x * k, y: b.y * k, w: b.w * k, h: b.h * k }, ST.guideState, flip);
+    const nail = ST.step === 'nail';
+    const flip = nail ? false : ST.mode === 'live' ? (ST.profile.hand === 'left') !== ST.mirrored : ST.guideFlip;
+    Draw.drawGuide(el.guide, { x: b.x * k, y: b.y * k, w: b.w * k, h: b.h * k }, ST.guideState, flip, nail ? 'nail' : 'palm');
   }
   /* 틀의 엄지 방향: 사진에서 찾은 방향이 있으면 그대로, 없으면 고른 손대로 */
   function refreshFlip() {
@@ -170,7 +183,12 @@ const App = (function () {
     el.liveControls.hidden = mode !== 'live';
     el.photoControls.hidden = mode !== 'adjust';
     el.stage.classList.toggle('photo', mode === 'adjust');
-    el.capTitle.textContent = mode === 'adjust' ? '손 모양 틀에 손바닥을 맞춰주세요' : mode === 'live' ? '손 모양 틀에 손바닥을 맞춰주세요' : '손바닥 사진을 준비해 주세요';
+    const nail = ST.step === 'nail';
+    el.capTitle.textContent = nail ? (mode === 'live' ? '이번엔 엄지 손톱을 틀에 맞춰주세요' : '이번엔 엄지 손톱을 찍어주세요')
+      : mode === 'choose' ? '손바닥을 쫙 펴서 찍어주세요' : '손바닥을 쫙 펴서 틀에 맞춰주세요';
+    el.tipsPalm.hidden = nail; el.tipsNail.hidden = !nail;
+    el.chooseNote.textContent = nail ? '엄지 손톱이 사진 한가운데에 크게 오도록 찍어주세요.' : '이 화면에서는 틀을 띄울 수 없어, 사진에서 손바닥을 알아서 찾아 읽습니다.';
+    el.btnSkipNail.hidden = !nail;
     if (mode === 'live') { ST.guideState = 'idle'; setHint(liveHint('none')); }
     if (mode !== 'live') stopAlign();
     if (mode === 'adjust') setHint('사진을 끌고 크기를 맞춰 틀 안에 넣어주세요');
@@ -179,7 +197,7 @@ const App = (function () {
   function liveHint(h) {
     return h === 'ok' ? '좋아요! 지금 찍으세요' : h === 'dark' ? '너무 어두워요. 밝은 곳에서'
       : h === 'thumb' ? `엄지 방향이 달라요. ${handName()} 손바닥이 맞나요?` : h === 'far' ? '손이 틀보다 커요. 조금 멀리'
-      : `${handName()} 손바닥을 틀에 맞춰주세요`;
+      : `${handName()} 손바닥을 쫙 펴서 틀에 채워주세요`;
   }
   /* 틀 안의 영상을 원본(거울 반전 전) 좌표로 옮긴다 */
   function liveBox() {
@@ -194,6 +212,7 @@ const App = (function () {
   function stopAlign() { if (alignTimer) { clearInterval(alignTimer); alignTimer = 0; } }
   function startAlign() {
     stopAlign();
+    if (ST.step === 'nail') { ST.guideState = 'idle'; setHint('엄지 손톱 한 개를 틀 안에 크게'); paintGuide(); return; }
     alignTimer = setInterval(() => {
       if (ST.mode !== 'live' || ST.screen !== 'capture') { stopAlign(); return; }
       const g = liveBox();
@@ -205,7 +224,7 @@ const App = (function () {
       c.drawImage(el.video, g.x, g.y, g.w, g.h, 0, 0, 75, 105);
       c.restore();
       let q = null;
-      try { q = PalmReader.quickAlign(alignCanvas); } catch (e) { q = null; }
+      try { q = PalmReader.quickAlign(alignCanvas, true); } catch (e) { q = null; }
       if (!q) return;
       const state = q.hint === 'ok' ? 'ok' : q.hint === 'none' ? 'idle' : 'warn';
       setHint(liveHint(q.hint), q.hint === 'ok');
@@ -257,6 +276,14 @@ const App = (function () {
   function shootLive() {
     const v = el.video;
     if (!v.videoWidth) { toast('카메라가 아직 준비되지 않았어요. 잠시 후 다시 눌러주세요.'); return; }
+    if (ST.step === 'nail') {
+      const g = liveBox(), nc = document.createElement('canvas');
+      nc.width = 200; nc.height = 250;
+      if (!g) return;
+      nc.getContext('2d', { willReadFrequently: true }).drawImage(v, g.x, g.y, g.w, g.h, 0, 0, 200, 250);
+      readNail(nc);
+      return;
+    }
     const c = document.createElement('canvas');
     c.width = v.videoWidth; c.height = v.videoHeight;
     c.getContext('2d').drawImage(v, 0, 0);        // 저장은 거울 반전 없이, 실제 모습 그대로
@@ -281,7 +308,48 @@ const App = (function () {
     img.src = url;
   }
   function loadPhoto(file) {
-    if (file) setPhoto(URL.createObjectURL(file));
+    if (!file) return;
+    if (ST.step === 'nail') { loadNail(file); return; }
+    setPhoto(URL.createObjectURL(file));
+  }
+
+  /* ---------- 손톱 ---------- */
+  /* 손바닥 사진을 받은 다음: 손톱을 아직 안 찍었으면 손톱 단계로, 찍었거나 건너뛰었으면 판독으로 */
+  function afterPalm(preFail) {
+    if (preFail || ST.nail !== undefined) { runScan(preFail); return; }
+    ST.step = 'nail';
+    if (ST.screen !== 'capture') show('capture');
+    setMode('choose');
+    if (canLive()) startCamera();
+  }
+  function readNail(canvas) {
+    let r = null;
+    try { r = PalmReader.analyzeNail(canvas); } catch (e) { r = null; }
+    if (!r || !r.ok) {
+      toast(r && r.reason === 'dark' ? '너무 어두워요. 밝은 곳에서 다시 찍어주세요.' : '손톱이 잘 보이지 않아요. 손톱 한 개를 크게 맞춰 다시 찍어주세요.');
+      return;
+    }
+    ST.nail = r;
+    stopCamera();
+    runScan(null);
+  }
+  /* 틀 없이 받은 손톱 사진: 한가운데를 손톱으로 본다 */
+  function loadNail(file) {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const iw = img.naturalWidth, ih = img.naturalHeight, s = 0.5 * Math.min(iw, ih * 0.8), c = document.createElement('canvas');
+      c.width = 200; c.height = 250;
+      c.getContext('2d', { willReadFrequently: true }).drawImage(img, (iw - s) / 2, (ih - s * 1.25) / 2, s, s * 1.25, 0, 0, 200, 250);
+      URL.revokeObjectURL(url);
+      readNail(c);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); toast('사진을 열 수 없어요. 다른 사진을 골라주세요.'); };
+    img.src = url;
+  }
+  function skipNail() {
+    ST.nail = null;
+    stopCamera();
+    runScan(null);
   }
   function autoRead(allowRotate, guide) {
     const p = ST.photo, left = ST.profile.hand === 'left';
@@ -295,16 +363,17 @@ const App = (function () {
         && Math.abs((f.oy + HAND.H * f.s / 2) - (guide.y + guide.h / 2)) < guide.h * 0.4;
       if (!near) f = { ok: true, flip: left, s: gs, ox: guide.x, oy: guide.y };
     }
+    ST.palmOnly = !!guide;
     if (f && f.rot) { rotatePhoto(f.rot, false); return; }       // 옆으로 누운 사진은 세운 뒤 다시 찾는다
     ST.fromPhoto = true;
     if (f && f.ok) {
       ST.hand = PalmReader.cropByFit(el.photo, p.iw, p.ih, f);
       ST.captureFlip = !!f.flip;
-      runScan(null);
+      afterPalm(null);
     } else {
       ST.hand = null;
       ST.captureFlip = false;
-      runScan('no_palm');
+      afterPalm('no_palm');
     }
   }
   function rotatePhoto(quarter, adjust) {
@@ -322,6 +391,7 @@ const App = (function () {
 
   /* 직접 맞추기: 자동으로 손을 못 찾았을 때만 */
   function enterAdjust() {
+    ST.step = 'palm';
     if (ST.screen !== 'capture') show('capture');
     setMode('adjust');
     layoutStage();
@@ -412,7 +482,9 @@ const App = (function () {
     });
   }
 
-  function goCapture() {
+  function goCapture(fresh) {
+    ST.step = 'palm';
+    if (fresh) ST.nail = undefined;      // 새 판: 손톱도 다시 찍는다 (손바닥만 다시 찍을 때는 손톱을 그대로 둔다)
     show('capture');
     setMode('choose');
     if (canLive()) startCamera();      // 틀이 있는 화면 안 카메라를 곧바로 연다
@@ -425,7 +497,8 @@ const App = (function () {
     ST.hand = c;
     ST.captureFlip = ST.guideFlip;
     ST.fromPhoto = true;
-    runScan(null);
+    ST.palmOnly = true;
+    afterPalm(null);
   }
 
   /* ---------- 판독 ---------- */
@@ -453,7 +526,8 @@ const App = (function () {
     await wait(90);
     let a;
     if (preFail) a = { ok: false, reason: preFail, quality: {} };
-    else { try { a = PalmReader.analyze(ST.hand); } catch (e) { a = { ok: false, reason: 'faint', quality: {} }; } }
+    else { try { a = PalmReader.analyze(ST.hand, { palmOnly: ST.palmOnly }); } catch (e) { a = { ok: false, reason: 'faint', quality: {} }; } }
+    if (a.ok) a.nail = ST.nail || null;
     const failAt = a.ok ? -1 : ({ no_palm: 0, no_hand: 0, misaligned: 0, thumb: 0, background: 0, too_dark: 1, too_bright: 1, faint: 2 })[a.reason];
     const stepMs = reduceMotion ? 40 : 430;
     for (let i = 0; i < steps.length; i++) {
@@ -530,8 +604,17 @@ const App = (function () {
       const li = node('li');
       const tag = node('span', 'tag', LINE_INFO[id].name);
       tag.style.background = LINE_INFO[id].color;
-      li.append(tag, node('span', null, Fortune.lineSummary(id, res.lines[id])));
+      const body = node('div');
+      body.append(node('p', 'line-mean', Fortune.lineMeaning(id, res.lines)), node('p', 'line-measure', Fortune.lineSummary(id, res.lines[id])));
+      li.append(tag, body);
       el.lineList.append(li);
+    }
+    // 종합 풀이
+    el.overall.textContent = '';
+    for (const r of Fortune.overall(res)) {
+      const li = node('li');
+      li.append(node('span', 'tag', r.tag), node('span', null, r.text));
+      el.overall.append(li);
     }
     renderReading(res);
     // 이유
@@ -759,11 +842,11 @@ const App = (function () {
 
   /* ---------- 시작 ---------- */
   async function init() {
-    for (const id of ['introArt', 'refBanner', 'btnStart', 'chanceLine', 'btnLast', 'modeLine', 'btnBack', 'capTitle', 'chooseBox', 'stageBox', 'btnCam', 'btnCancelCam',
+    for (const id of ['introArt', 'refBanner', 'btnStart', 'chanceLine', 'btnLast', 'modeLine', 'btnBack', 'capTitle', 'chooseBox', 'stageBox', 'btnCam', 'btnCancelCam', 'tipsPalm', 'tipsNail', 'chooseNote', 'btnSkipNail',
       'stage', 'video', 'photo', 'guide', 'hint',
       'liveControls', 'photoControls', 'btnShoot', 'btnSwitch', 'zoom', 'btnUsePhoto', 'btnRotate', 'btnFlipHand', 'filePick', 'fileShoot', 'btnSetupBack', 'btnSetupGo', 'setupNote',
       'scanTitle', 'scanCanvas', 'scanSteps', 'retake', 'retakeTitle', 'retakeTip', 'btnRetake', 'btnAdjust',
-      'carName', 'carKind', 'carSync', 'carTag', 'heroCanvas', 'profileLine', 'pickNav', 'pickPanels', 'panel1', 'panel2', 'panel3', 'panel4', 'traceCanvas', 'lineList', 'moreRead', 'reasons', 'bars',
+      'carName', 'carKind', 'carSync', 'carTag', 'heroCanvas', 'profileLine', 'pickNav', 'pickPanels', 'panel1', 'panel2', 'panel3', 'panel4', 'traceCanvas', 'lineList', 'overall', 'moreRead', 'reasons', 'bars',
       'btnShare', 'btnSave', 'btnCopy', 'btnAgain', 'againLine',
       'gate', 'gateClose', 'gateLinkBox', 'gateLink', 'gateCopy', 'gateShare', 'gateStatus', 'gateGo', 'gatePreview', 'gateSim', 'toast']) el[id] = $(id);
     el.scanStage = el.scanCanvas.parentElement;
@@ -780,7 +863,8 @@ const App = (function () {
     el.btnFlipHand.addEventListener('click', () => { ST.flipManual = !ST.flipManual; refreshFlip(); });
     el.btnRotate.addEventListener('click', () => rotatePhoto(1, true));
     el.btnSetupBack.addEventListener('click', () => { show('intro'); updateIntro(); });
-    el.btnSetupGo.addEventListener('click', goCapture);
+    el.btnSetupGo.addEventListener('click', () => goCapture(true));
+    el.btnSkipNail.addEventListener('click', skipNail);
     document.addEventListener('change', (e) => {
       const t = e.target;
       if (!t || t.type !== 'radio') return;
@@ -793,7 +877,7 @@ const App = (function () {
     for (const input of [el.filePick, el.fileShoot]) {
       input.addEventListener('change', () => { loadPhoto(input.files && input.files[0]); input.value = ''; });
     }
-    el.btnRetake.addEventListener('click', goCapture);
+    el.btnRetake.addEventListener('click', () => goCapture(false));
     el.btnAdjust.addEventListener('click', () => { if (ST.photo.url) { show('capture'); enterAdjust(); } });
     el.btnShare.addEventListener('click', shareImage);
     el.btnSave.addEventListener('click', saveImage);

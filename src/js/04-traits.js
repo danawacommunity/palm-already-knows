@@ -41,6 +41,12 @@ const Fortune = (function () {
   }
 
   /* 보조선·특별한 손금·구·손 모양이 성향에 더하는 점수. why 에는 무엇이 더했는지 남긴다 */
+  /* 손톱 빛깔: 같은 조명에서 찍은 손바닥 피부색과 견주어 본다 (red | pale | mid) */
+  function nailTone(nl, skin) {
+    if (!nl || !skin) return 'mid';
+    const d = nl.pink - ((0.5 * skin[0] - 0.418688 * skin[1] - 0.081312 * skin[2]) - (-0.168736 * skin[0] - 0.331264 * skin[1] + 0.5 * skin[2]));
+    return d >= 4 ? 'red' : d <= -6 ? 'pale' : 'mid';
+  }
   function bonus(a) {
     const b = { vital: 0, advent: 0, heart: 0, logic: 0, dream: 0, grit: 0 };
     const why = { vital: [], advent: [], heart: [], logic: [], dream: [], grit: [] };
@@ -58,6 +64,16 @@ const Fortune = (function () {
     if (mt[0] && MOUNT_INFO[mt[0]]) {
       add(MOUNT_INFO[mt[0]].traits[0], 0.06, MOUNT_INFO[mt[0]].name);
       add(MOUNT_INFO[mt[0]].traits[1], 0.04, MOUNT_INFO[mt[0]].name);
+    }
+    const nl = a.nail;
+    if (nl) {
+      if (nl.ratio != null && nl.ratio >= 1.2) { add('heart', 0.05, '긴 손톱'); add('dream', 0.04, '긴 손톱'); }
+      else if (nl.ratio != null && nl.ratio <= 0.95) { add('vital', 0.05, '넓은 손톱'); add('advent', 0.03, '넓은 손톱'); }
+      else if (nl.ratio != null) { add('grit', 0.03, '고른 손톱'); add('logic', 0.03, '고른 손톱'); }
+      const tone = nailTone(nl, a.quality && a.quality.skin);
+      if (tone === 'red') add('vital', 0.04, '붉은 손톱');
+      else if (tone === 'pale') add('logic', 0.04, '맑은 손톱');
+      if (nl.moon) { add('grit', 0.03, '또렷한 반달'); add('vital', 0.03, '또렷한 반달'); }
     }
     if (sh) {
       if (sh.fingerRatio != null && sh.fingerRatio >= 0.83) add('logic', 0.06, '긴 손가락');
@@ -216,7 +232,7 @@ const Fortune = (function () {
     return {
       v: 3, ts: Date.now(), carId: pick.car.id, sync: pick.sync, balanced: pick.balanced,
       scores, reasons, script, lines: analysis.lines, quality: analysis.quality,
-      marks: analysis.marks || null, special: analysis.special || null, mounts: analysis.mounts || null, shape: analysis.shape || null,
+      marks: analysis.marks || null, special: analysis.special || null, mounts: analysis.mounts || null, shape: analysis.shape || null, nail: analysis.nail || null,
       boost: bon.why,
       profile: Object.assign({ hand: 'right', gender: 'u', age: 30 }, profile || {}),
       skin: (analysis.quality && analysis.quality.skin) || null,
@@ -374,6 +390,22 @@ const Fortune = (function () {
       const row = (id, rank) => ({ tag: MOUNT_INFO[id].name, color: '#1A1410', text: `${rank} 혈색이 도는 자리입니다(${MOUNT_INFO[id].where}). ${MOUNT_INFO[id].mean}을 뜻합니다.`, plus: rank === '가장' ? tn(MOUNT_INFO[id].traits) : null });
       out.push({ title: '구(丘)', rows: [row(mt.order[0], '가장'), row(mt.order[1], '두 번째로')], note: '구는 도톰하게 솟은 정도로 보지만 사진으로는 잴 수 없어, 주변보다 붉은 기가 도는 정도로 가늠했습니다.' });
     }
+    const nl = res.nail;
+    if (nl) {
+      const rows = [];
+      rows.push(nl.ratio == null
+        ? { tag: '모양', color: '#1A1410', text: '손톱의 테두리가 또렷하게 잡히지 않아 모양은 읽지 못했습니다.' }
+        : nl.ratio >= 1.2 ? { tag: '모양', color: '#1A1410', text: '세로로 긴 손톱입니다. 마음이 여리고 상상력이 풍부한 타입으로 풉니다.', plus: tn(['heart', 'dream']) }
+        : nl.ratio <= 0.95 ? { tag: '모양', color: '#1A1410', text: '가로로 넓은 손톱입니다. 솔직하고 몸이 먼저 움직이는 타입으로 풉니다.', plus: tn(['vital', 'advent']) }
+        : { tag: '모양', color: '#1A1410', text: '길이와 너비가 고른 손톱입니다. 치우침 없이 차근차근 해내는 타입으로 풉니다.', plus: tn(['grit', 'logic']) });
+      const tone = nailTone(nl, res.skin);
+      rows.push(tone === 'red' ? { tag: '빛깔', color: '#C3251C', text: '손바닥보다 붉은 기가 도는 손톱입니다. 기운이 넘치고 열이 많은 기질로 풉니다.', plus: tn(['vital']) }
+        : tone === 'pale' ? { tag: '빛깔', color: '#C3251C', text: '맑고 옅은 빛의 손톱입니다. 차분하게 따져 보는 기질로 풉니다.', plus: tn(['logic']) }
+        : { tag: '빛깔', color: '#C3251C', text: '고운 분홍빛 손톱입니다. 모나지 않고 두루 잘 어울리는 기질로 풉니다.' });
+      rows.push(nl.moon ? { tag: '반달', color: '#0E6E66', text: '뿌리 쪽에 반달이 또렷합니다. 한번 시작하면 밀고 나가는 추진력으로 풉니다.', plus: tn(['grit', 'vital']) }
+        : { tag: '반달', color: '#0E6E66', text: '반달이 뚜렷하게 보이지 않습니다. 서두르지 않고 제 속도로 가는 타입으로 풉니다.' });
+      out.push({ title: '손톱', rows, note: '엄지 손톱 한 개의 모양과 빛깔만 재미로 본 것입니다. 조명과 매니큐어에 따라 달라질 수 있고, 건강 상태를 뜻하지 않습니다.' });
+    }
     if (sh) {
       const rows = [];
       if (sh.fingerRatio != null) {
@@ -400,5 +432,63 @@ const Fortune = (function () {
     return `손목에서 중지 쪽으로 ${pct(l.len)}% · ${d}`;
   }
 
-  return { read, features, traitScores, pickCar, lineSummary, extras, personalColor, reading, bonus };
+  /* ---------- 손금 풀이: 주요선 네 개가 뜻하는 것 ---------- */
+  function lineMeaning(id, lines) {
+    const l = lines[id], f = features(lines);
+    if (id === 'life') {
+      if (!l.found) return '선이 옅어 일부만 읽혔습니다. 수상학에서는 무리하게 달리기보다 쉬어 가며 힘을 모으는 손으로 풉니다.';
+      return (f.lifeLen >= 0.6 ? '손목 쪽까지 길게 이어집니다. 기운이 오래가고, 지쳐도 금방 회복하는 손입니다. ' : '길지 않은 편입니다. 짧고 굵게 힘을 몰아 쓰는 손으로, 쉬는 시간을 꼭 챙겨야 능률이 납니다. ')
+        + (f.lifeReach >= 0.55 ? '손바닥 가운데까지 크게 휘어 돌아, 활동 반경이 넓고 밖에서 기운을 얻는 타입입니다. ' : f.lifeReach <= 0.3 ? '엄지 쪽에 바짝 붙어 내려와, 익숙한 사람과 공간에서 힘을 얻는 신중한 타입입니다. ' : '휘는 정도가 알맞아, 나설 때와 쉴 때를 가릴 줄 아는 타입입니다. ')
+        + (f.lifeDepth >= 0.6 ? '다른 선보다 깊은 편이라 의지와 생활력이 강합니다.' : '다른 선보다 가는 편이라 섬세하고 주변 분위기에 민감합니다.')
+        + ' 생명선의 길이는 수명이 아니라 활력을 봅니다.';
+    }
+    if (id === 'head') {
+      if (!l.found) return '선이 옅어 일부만 읽혔습니다. 깊이 따지기보다 느낌과 경험으로 정하는 손으로 풉니다.';
+      return (f.headSlope >= 0.6 ? '손바닥 아래쪽으로 길게 처집니다. 상상력과 감수성이 풍부해 기획·창작에 강한 머리입니다. ' : f.headSlope <= 0.25 ? '옆으로 곧게 뻗습니다. 현실 감각과 셈이 빠르고, 근거를 확인해야 움직이는 머리입니다. ' : '완만하게 내려갑니다. 현실 감각과 상상력이 한쪽으로 치우치지 않은 머리입니다. ')
+        + (f.headLen >= 0.6 ? '선이 길어 한 가지를 오래, 깊게 파고듭니다. ' : '선이 짧은 편이라 고민을 오래 끌지 않고 결정이 빠릅니다. ')
+        + (l.gap != null && f.headGap >= 0.6 ? '생명선과 떨어져서 출발해 독립심이 강하고 결단이 대담합니다.' : '생명선과 붙어서 출발해 돌다리도 두드려 보는 신중함이 있습니다.');
+    }
+    if (id === 'heart') {
+      if (!l.found) return '선이 옅어 일부만 읽혔습니다. 감정을 겉으로 잘 드러내지 않는 손으로 풉니다.';
+      return (f.heartRise >= 0.55 ? '끝이 검지 쪽으로 휘어 오릅니다. 마음을 숨기지 않고 표현하며, 애정에 적극적입니다. ' : f.heartRise <= 0.15 ? '끝이 곧게 뻗습니다. 표현은 서툴러도 속정이 깊고, 감정에 휩쓸리지 않습니다. ' : '끝이 살짝 오릅니다. 다정하지만 선을 지킬 줄 아는 따뜻한 타입입니다. ')
+        + (f.heartLen >= 0.6 ? '선이 길어 한번 맺은 인연을 오래 가져갑니다. ' : '선이 짧은 편이라 넓은 관계보다 가까운 몇 사람에게 마음을 씁니다. ')
+        + (f.heartDepth >= 0.6 ? '다른 선보다 깊은 편이라 좋고 싫음이 분명합니다.' : '다른 선보다 가는 편이라 상대 기분을 잘 살피는 세심함이 있습니다.');
+    }
+    if (!l.found) return '또렷한 운명선이 없습니다. 정해진 길을 따르기보다 여러 일을 거치며 내 길을 직접 만드는 손으로 풉니다. 나쁜 뜻이 아니라 자유로운 손입니다.';
+    return (l.len >= 0.6 ? '손목 가까이에서 중지 쪽으로 길게 오릅니다. 일찍 방향을 정하고 한 우물을 파는 손입니다. ' : '손바닥 중간쯤부터 오릅니다. 스스로 길을 찾아 뒤늦게 자리를 잡는 자수성가형으로 풉니다. ')
+      + (l.depth >= 0.07 ? '선이 진해 맡은 일에 대한 책임감과 직업운이 강합니다.' : '선이 옅어 한 가지 직함에 묶이기보다 여러 역할을 오갑니다.');
+  }
+
+  /* ---------- 종합 풀이: 성격 · 연애운 · 재물운 · 일과 적성 ---------- */
+  const TRAIT_SELF = {
+    vital: '에너지가 넘쳐 가만히 있지 못하는', advent: '새로운 것을 보면 일단 해 보는', heart: '정이 많고 표현이 풍부한',
+    logic: '따질 것은 따지고 넘어가는', dream: '남들과 다른 그림을 그리는', grit: '한번 정하면 끝까지 가는',
+  };
+  const TRAIT_JOB = {
+    vital: '몸으로 뛰고 현장을 누비는 일', advent: '새 판을 벌이는 기획·영업·창업', heart: '사람을 상대하고 돌보는 일',
+    logic: '숫자와 근거를 다루는 분석·관리', dream: '없던 것을 만들어 내는 창작·디자인', grit: '오래 쌓아야 빛나는 전문직·장인의 일',
+  };
+  function overall(res) {
+    const L = res.lines || {}, M = res.marks || {}, S = res.special || {}, f = features(L);
+    const order = TRAITS.map((t, i) => ({ id: t.id, name: t.name, s: res.scores[i] - TRAIT_BASE[i] })).sort((a, b) => b.s - a.s);
+    const a = order[0], b = order[1], low = order[order.length - 1];
+    const cnt = (k) => (M[k] ? M[k].count : 0), has = (k) => !!(L[k] && L[k].found);
+    const rows = [];
+    rows.push({ tag: '성격', text: `${TRAIT_SELF[a.id]} 사람입니다. 여기에 ${b.name}이 받쳐 주어 ${TRAIT_SELF[b.id]} 면도 함께 보입니다. 상대적으로 ${low.name} 쪽은 덜 쓰는 편이라, 그 부분을 채워 주는 사람과 잘 맞습니다.` });
+    rows.push({ tag: '연애운', text:
+      (f.heartRise >= 0.55 ? '좋아하면 먼저 다가가는 편이라 인연이 시작되기 쉽습니다. ' : f.heartRise <= 0.15 ? '마음을 여는 데 시간이 걸리지만, 한번 열면 오래갑니다. ' : '서두르지 않고 편안하게 가까워지는 연애를 합니다. ')
+      + (cnt('marriage') >= 2 ? '결혼선이 여러 줄이라 인연의 기회가 여러 번 온다고 풉니다. ' : cnt('marriage') === 1 ? '결혼선이 한 줄로 또렷해 한 사람과 깊게 가는 운입니다. ' : '결혼선이 옅어 지금은 사람보다 내 일에 마음이 가 있는 때입니다. ')
+      + (has('sun') ? '태양선이 있어 호감을 사는 매력도 따릅니다.' : '') });
+    rows.push({ tag: '재물운', text:
+      (S.m ? 'M자 손금이라 뒷심으로 재물을 모은다고 풉니다. ' : '')
+      + (has('fate') ? '운명선이 서 있어 꾸준한 일에서 돈이 들어오는 운입니다. ' : '운명선이 옅어 한 곳의 월급보다 여러 갈래의 벌이가 어울립니다. ')
+      + (cnt('money') >= 1 ? '재물선이 보여 들어온 돈을 지킬 줄 압니다. ' : '재물선은 옅어 모으기보다 쓰는 데서 보람을 찾는 편이니, 자동으로 모이는 장치를 두면 좋습니다. ')
+      + (has('mercury') ? '수성선이 있어 장사 수완과 셈도 밝습니다.' : '') });
+    rows.push({ tag: '일·적성', text:
+      `${TRAIT_JOB[a.id]}에서 실력이 납니다. ` + (f.headSlope >= 0.6 ? '두뇌선이 처져 있어 정해진 절차보다 아이디어를 내는 자리에서 빛납니다. ' : f.headSlope <= 0.25 ? '두뇌선이 곧아 기준과 숫자가 분명한 자리에서 믿음을 얻습니다. ' : '')
+      + (L.fate && L.fate.found && L.fate.len >= 0.6 ? '한 분야를 오래 파면 이름이 납니다.' : '한 가지에 묶이기보다 경험을 넓히다 보면 자리가 잡힙니다.') });
+    return rows;
+  }
+
+  return { read, features, traitScores, pickCar, lineSummary, lineMeaning, overall, extras, personalColor, reading, bonus };
 })();
