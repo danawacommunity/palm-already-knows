@@ -96,7 +96,7 @@
         </ul>
         <button id="btnCam" class="btn btn-primary btn-big" type="button">카메라로 찍기</button>
         <label class="btn btn-ghost btn-big" for="filePick">앨범에서 고르기</label>
-        <p id="chooseNote" class="fine">이 화면에서는 틀을 띄울 수 없어, 사진에서 손바닥을 알아서 찾아 읽습니다.</p>
+        <p id="chooseNote" class="fine">카메라로 찍으면 손바닥 틀이 나와요. 앨범 사진은 손바닥을 알아서 찾아 읽습니다.</p>
       </div>
 
       <!-- 화면 안 카메라(손 모양 틀과 함께)와, 자동으로 손을 못 찾았을 때의 직접 맞추기 -->
@@ -125,7 +125,7 @@
         </div>
       </div>
       <button id="btnSkipNail" class="btn btn-ghost" type="button" hidden>손톱은 건너뛰기</button>
-      <input id="filePick" class="vh" type="file" accept="image/*" tabindex="-1">
+      <input id="filePick" class="vh" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" tabindex="-1">
       <input id="fileShoot" class="vh" type="file" accept="image/*" capture="environment" tabindex="-1">
     </section>
 
