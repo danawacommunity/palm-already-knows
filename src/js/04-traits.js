@@ -305,7 +305,7 @@ const Fortune = (function () {
     const items = {};
     for (const cat of Object.keys(PICKS)) {
       const c = choose(PICKS[cat].options, lens(PICK_LENS[cat] || 1), tier);
-      items[cat] = { cat, label: PICKS[cat].label, name: c.opt.name, why: (c.opt.whyBy && c.opt.whyBy[c.trait]) || c.opt.why, chip: chip(c.trait) };
+      items[cat] = { cat, label: PICKS[cat].label, name: c.opt.name, why: (c.opt.whyBy && c.opt.whyBy[c.trait]) || c.opt.why, chip: chip(c.trait), trait: c.trait };
       if (cat === 'region') {
         items[cat].name = `${c.opt.area === '한국' ? '대한민국' : c.opt.area} · ${c.opt.name}`;
         items[cat].area = c.opt.area;
@@ -344,7 +344,7 @@ const Fortune = (function () {
     const me = myMbti(u), lookKey = teen || g === 'u' ? 'n' : g === 'm' ? 'f' : 'm';
     items.ptype = {
       cat: 'ptype', label: teen ? '잘 맞는 친구' : `어울리는 ${who}`, name: PARTNER.type[wid].name,
-      why: `${PARTNER.type[wid].why}. ${heartStyle(res.lines && res.lines.heart)}`, chip: `내 ${chip(wid)}`,
+      why: `${PARTNER.type[wid].why}. ${heartStyle(res.lines && res.lines.heart)}`, chip: `내 ${chip(wid)}`, weak: wid,
     };
     items.pmbti = {
       cat: 'pmbti', label: `${who}의 MBTI`, name: PARTNER.mbti[me].join(' · '),
@@ -354,7 +354,8 @@ const Fortune = (function () {
       cat: 'plook', label: teen ? '친구의 인상' : g === 'u' ? '상대의 인상' : '이성의 외모', name: PARTNER.look[wid].name,
       why: PARTNER.look[wid][lookKey], chip: '',
     };
-    const groups = PICK_GROUPS.map((gr) => ({ id: gr.id, tab: gr.tab, items: gr.cats.map((c) => items[c]) }));
+    const groups = PICK_GROUPS.map((gr) => ({ id: gr.id, tab: gr.tab, whyTitle: gr.why, items: gr.cats.map((c) => items[c]) }));
+    for (const gr of groups) gr.whyText = groupWhy(gr, res, me);
     return { groups, items, mbti: me, profile: prof };
   }
 
@@ -434,6 +435,47 @@ const Fortune = (function () {
     if (id === 'heart') return `손바닥 폭의 ${pct(l.len)}% · 끝이 ${l.rise >= 0.03 ? '위로 휘어 오름' : l.rise <= -0.02 ? '아래로 내려감' : '곧게 뻗음'} · ${d}`;
     if (id === 'head') return `손바닥 폭의 ${pct(l.len)}% · 기울기 ${Math.round(l.slopeDeg)}° · ${d}`;
     return `손목에서 중지 쪽으로 ${pct(l.len)}% · ${d}`;
+  }
+
+  /* ---------- 묶음마다 "왜 이걸 골랐는지" ---------- */
+  const GROUP_FLAVOR = {
+    style: '옷차림과 소지품은 성향이 가장 먼저 드러나는 곳이라',
+    life: '무엇을 먹고 어디서 장을 보는지에도 성향이 묻어나서',
+    tech: '매일 손에 쥐는 기기와 PC는 쓰는 사람의 습관을 닮아야 오래 아껴 쓰게 되니',
+    home: '대형가전은 한번 들이면 10년을 함께하는 살림이라',
+    people: '사람은 나와 같은 점보다 나에게 없는 점을 채워 줄 때 오래가서',
+    place: '사는 곳은 하루의 리듬을 정하는 곳이라',
+  };
+  /* 성향 하나가 손금 어디에서 나왔는지 한 줄로 */
+  function traitSource(res, id) {
+    const f = features(res.lines), ev = evidence(id, res.lines, f), plus = (res.boost && res.boost[id]) || [];
+    const w = plus.slice(0, 2).join('·'), last = w.charCodeAt(w.length - 1);
+    const ga = last >= 0xAC00 && last <= 0xD7A3 && (last - 0xAC00) % 28 === 0 ? '가' : '이';      // 받침 없으면 '가'
+    return `${ev.short}${plus.length ? `(여기에 ${w}${ga} 더함)` : ''}`;
+  }
+  function groupWhy(gr, res, mbti) {
+    const sc = (id) => res.scores[TRAIT_INDEX[id]], nm = (id) => TRAITS[TRAIT_INDEX[id]].name;
+    if (gr.id === 'people') {
+      const wid = gr.items[0].weak;
+      return [
+        `어울리는 사람은 나의 강점이 아니라 빈 곳을 보고 골랐어요. 여섯 성향 중 ${nm(wid)}(${sc(wid)}점)이 가장 덜 드러나는 손금이라, 그 부분을 자연스럽게 채워 주는 사람이 곁에 있을 때 균형이 맞습니다.`,
+        `MBTI는 손금 성향을 네 글자로 옮긴 ${mbti}를 기준으로, 서로 보완이 잘 된다고 알려진 조합을 골랐어요.`,
+      ];
+    }
+    // 이 묶음 항목들이 근거로 삼은 성향 (많이 쓰인 순)
+    const cnt = {};
+    for (const it of gr.items) if (it.trait) cnt[it.trait] = (cnt[it.trait] || 0) + 1;
+    const ids = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || sc(b) - sc(a)).slice(0, 2);
+    if (!ids.length) return ['손금 전체의 성향을 고르게 보고 골랐어요.'];
+    const t0 = TRAITS[TRAIT_INDEX[ids[0]]];
+    const out = [
+      `${GROUP_FLAVOR[gr.id]}, 이 묶음은 손금에서 두드러진 ${ids.map((id) => `${nm(id)}(${sc(id)}점)`).join('과 ')} 성향을 기준으로 골랐어요.`,
+      ids.map((id) => `${nm(id)} 점수는 ${traitSource(res, id)}에서 나왔습니다.`).join(' '),
+      `${t0.name}이 높은 사람은 ${t0.mean}이 있어, 그 기질을 살려 주고 오래 질리지 않을 것들로 맞췄어요.`,
+    ];
+    if (gr.items.some((it) => it.cat === 'pcolor')) out.push('퍼스널컬러만은 성향이 아니라 사진에 찍힌 손바닥 피부 톤으로 골랐어요.');
+    if (gr.id === 'place') out.push('국내·해외·북한 후보를 모두 놓고 성향이 가장 잘 맞는 곳 하나를 뽑았어요.');
+    return out;
   }
 
   /* ---------- 손금 풀이: 주요선 네 개가 뜻하는 것 ---------- */

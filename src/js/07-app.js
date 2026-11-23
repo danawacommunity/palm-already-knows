@@ -618,11 +618,12 @@ const App = (function () {
   async function renderResult() {
     const res = ST.result, car = CARS.find((c) => c.id === res.carId);
     el.carName.textContent = car.name;
+    el.carName.className = 'pick-name';
     el.carKind.textContent = car.kind;
     el.carSync.textContent = `싱크로율 ${res.sync}%`;
     el.carTag.textContent = car.tagline;
     el.carLink.textContent = '';
-    el.carLink.append(danawaBtn(DANAWA.car(car.name), '가격·견적 보러 가기', '다나와자동차 · 트림별 가격 확인', true));
+    el.carLink.append(danawaBtn(DANAWA.car(car.name), '다나와자동차 가격·견적 보기', '트림별 가격 · 견적 확인'));
     const ex = Fortune.extras(res);
     ST.extras = ex;
     el.profileLine.textContent = `${profileText(ex.profile)} 기준 · ${ex.profile.hand === 'left' ? '왼손은 타고난 기질을 봅니다.' : '오른손은 살아오며 만든 기질을 봅니다.'}`;
@@ -637,10 +638,10 @@ const App = (function () {
       `1컷: 도사가 돋보기로 손바닥을 보며 말한다. "${res.script.p1}"`,
       `2컷: 도사가 손가락을 세우며 말한다. "${res.script.p2}"`,
       `3컷: 도사가 천에 가려진 자동차를 가리키며 말한다. "${res.script.p3}"`,
-      `4컷: ${car.name} 등장. "${res.script.p4}"`,
+      `4컷: 당신의 최애는? ${car.name}, ${['watch', 'brand', 'food', 'tv', 'region'].map((k) => ex.items[k].label + ' ' + (ex.items[k].short || ex.items[k].name)).join(', ')}`,
     ];
     for (let n = 1; n <= 4; n++) {
-      Draw.drawPanel(el['panel' + n], n, res);
+      Draw.drawPanel(el['panel' + n], n, res, ex);
       el['panel' + n].setAttribute('aria-label', alt[n - 1]);
     }
     Draw.drawTrace(el.traceCanvas, ST.lastPhoto, res, !!res.flip);
@@ -704,10 +705,18 @@ const App = (function () {
   function renderPicks(ex) {
     el.pickNav.textContent = '';
     el.pickPanels.textContent = '';
+    const carJump = node('button', 'tab', '자동차');
+    carJump.type = 'button';
+    carJump.addEventListener('click', () => $('grp-car').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' }));
+    el.pickNav.append(carJump);
     for (const g of ex.groups) {
       const sec = node('section', 'pickgroup'), card = node('div', 'card picks');
       sec.id = 'grp-' + g.id;
       sec.append(node('h3', 'pick-head', g.tab), card);
+      const whyBox = node('div', 'whybox card');
+      whyBox.append(node('h4', 'why-head', g.whyTitle));
+      for (const t of g.whyText) whyBox.append(node('p', null, t));
+      sec.append(whyBox);
       for (const it of g.items) {
         const row = node('div', 'pick'), body = node('div');
         const why = node('p', 'pick-why', it.why + ' ');

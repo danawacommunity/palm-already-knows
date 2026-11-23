@@ -545,22 +545,56 @@ const Draw = (function () {
     ctx.fillText('3', 52, P - 50);
   }
 
-  function panel4(ctx, res, car) {
+  /* 굿즈 이름을 컷 안에 들어갈 만큼 짧게: "제조사 · 브랜드 · 제품군" → "제조사 브랜드" */
+  function shortName(it) {
+    if (it.short) return it.short;
+    const p = it.name.split(' · ');
+    return p.length >= 3 ? `${p[0]} ${p[1]}` : p.join(' ');
+  }
+  function panel4(ctx, res, car, ex) {
     sunburst(ctx, 270, 300, 520, 24, PAPER, PAPER_HI);
-    // 이름 띠
+    // 제목 띠
     ctx.save();
-    ctx.translate(270, 70); ctx.rotate(-0.025);
-    rrect(ctx, -236, -50, 472, 100, 14);
+    ctx.translate(270, 56); ctx.rotate(-0.025);
+    rrect(ctx, -170, -32, 340, 64, 14);
     ctx.fillStyle = RED; ctx.fill();
     ctx.strokeStyle = INK; ctx.lineWidth = 6; ctx.stroke();
-    ctx.fillStyle = PAPER_HI; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = font(24, F_COMIC);
-    ctx.fillText('당신의 최애는', 0, -26);
-    ctx.fillStyle = '#FFFFFF';
-    const s = fitFont(ctx, car.name, 430, 52, F_DISPLAY, 30);
-    ctx.font = font(s, F_DISPLAY);
-    ctx.fillText(car.name, 0, 16);
+    ctx.fillStyle = '#FFFFFF'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = font(34, F_DISPLAY);
+    ctx.fillText('당신의 최애는?', 0, 2);
     ctx.restore();
+    if (ex) {
+      // 자동차와 다른 굿즈를 같은 크기의 줄로 나란히
+      const rows = [['자동차', car.name]].concat(['watch', 'brand', 'food', 'egear', 'tv', 'region'].map((k) => [ex.items[k].label.replace('어울리는 ', '').replace('전자기기 브랜드', '전자기기'), shortName(ex.items[k])]));
+      rrect(ctx, 30, 104, 480, 352, 16);
+      ctx.fillStyle = 'rgba(255,248,225,0.94)'; ctx.fill();
+      ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.stroke();
+      drawCar(ctx, car.body, 440, 168, 0.5, car.color);
+      const top = 132, gap = 45;
+      rows.forEach(([k, v], i) => {
+        const y = top + i * gap + 18;
+        ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+        rrect(ctx, 46, y - 16, 94, 32, 8);
+        ctx.fillStyle = i === 0 ? RED : INK; ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = font(fitFont(ctx, k, 84, 20, F_COMIC, 14), F_COMIC);
+        ctx.textAlign = 'center';
+        ctx.fillText(k, 93, y + 1);
+        ctx.textAlign = 'left';
+        ctx.fillStyle = INK;
+        const maxW = i === 0 ? 270 : 350;
+        ctx.font = font(fitFont(ctx, v, maxW, 26, F_COMIC, 15), F_COMIC);
+        ctx.fillText(v, 152, y + 1);
+        if (i < rows.length - 1) {
+          ctx.strokeStyle = 'rgba(26,20,16,0.18)'; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
+          ctx.beginPath(); ctx.moveTo(46, y + gap / 2); ctx.lineTo(494, y + gap / 2); ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      });
+      sparkle(ctx, 500, 96, 18, '#FFFFFF');
+      frame(ctx, 4);
+      return;
+    }
     // 차
     ctx.fillStyle = 'rgba(255,248,225,0.85)';
     ctx.beginPath(); ctx.ellipse(270, 330, 250, 34, 0, 0, Math.PI * 2); ctx.fill();
@@ -580,11 +614,11 @@ const Draw = (function () {
     frame(ctx, 4);
   }
 
-  function drawPanel(canvas, n, res) {
+  function drawPanel(canvas, n, res, ex) {
     const car = CARS.find((c) => c.id === res.carId);
     canvas.width = P; canvas.height = P;
     const ctx = canvas.getContext('2d');
-    [panel1, panel2, panel3, panel4][n - 1](ctx, res, car);
+    [panel1, panel2, panel3, panel4][n - 1](ctx, res, car, ex);
   }
 
   /* ---------- 결과 화면 맨 위의 자동차 그림 ---------- */
@@ -763,7 +797,20 @@ const Draw = (function () {
   }
 
   /* 촬영 화면의 손바닥 가이드 */
-  function drawGuide(canvas, box, state, flip) {
+  /* kind: 'palm'(손바닥만) | 'nail'(손톱 한 개) | 그 밖(손 전체). box 는 palm·손 전체일 때 손 도형 상자, nail 일 때 손톱 상자 */
+  function nailShape(g, grow) {
+    const x = -grow, y = -grow, w = 100 + grow * 2, h = 125 + grow * 2, rt = 44 + grow, rb = 30 + grow;
+    g.beginPath();
+    g.moveTo(x + rt, y); g.lineTo(x + w - rt, y); g.quadraticCurveTo(x + w, y, x + w, y + rt);
+    g.lineTo(x + w, y + h - rb); g.quadraticCurveTo(x + w, y + h, x + w - rb, y + h);
+    g.lineTo(x + rb, y + h); g.quadraticCurveTo(x, y + h, x, y + h - rb);
+    g.lineTo(x, y + rt); g.quadraticCurveTo(x, y, x + rt, y);
+    g.closePath(); g.fill();
+  }
+  function drawGuide(canvas, box, state, flip, kind) {
+    const nail = kind === 'nail';
+    const UW = nail ? 100 : HAND.W, UH = nail ? 125 : HAND.H;
+    const shape = nail ? nailShape : kind === 'palm' ? fillPalmShape : fillHandShape;
     const ctx = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
     ctx.clearRect(0, 0, W, H);
@@ -771,27 +818,27 @@ const Draw = (function () {
     ctx.fillRect(0, 0, W, H);
     const place = () => {
       ctx.translate(box.x, box.y);
-      ctx.scale(box.w / HAND.W, box.h / HAND.H);
-      if (flip) { ctx.translate(HAND.W, 0); ctx.scale(-1, 1); }
+      ctx.scale(box.w / UW, box.h / UH);
+      if (flip) { ctx.translate(UW, 0); ctx.scale(-1, 1); }
     };
     // 손 모양만큼 구멍을 낸다
     ctx.save(); place();
     ctx.globalCompositeOperation = 'destination-out';
     ctx.fillStyle = '#000';
-    fillHandShape(ctx, 0);
+    shape(ctx, 0);
     ctx.restore();
     // 윤곽선 (손 모양 바깥 테두리만 남긴다)
     const o = document.createElement('canvas');
     o.width = W; o.height = H;
     const g = o.getContext('2d');
     g.save();
-    g.translate(box.x, box.y); g.scale(box.w / HAND.W, box.h / HAND.H);
-    if (flip) { g.translate(HAND.W, 0); g.scale(-1, 1); }
+    g.translate(box.x, box.y); g.scale(box.w / UW, box.h / UH);
+    if (flip) { g.translate(UW, 0); g.scale(-1, 1); }
     g.fillStyle = state === 'ok' ? '#5BE49B' : state === 'warn' ? '#FFD23F' : '#FFFFFF';
-    fillHandShape(g, 3);
+    shape(g, nail ? 4 : 3);
     g.globalCompositeOperation = 'destination-out';
     g.fillStyle = '#000';
-    fillHandShape(g, 0);
+    shape(g, 0);
     g.restore();
     ctx.drawImage(o, 0, 0);
   }

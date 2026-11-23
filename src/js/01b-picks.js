@@ -305,12 +305,12 @@ const PICK_LENS = {
 
 /* 결과 화면의 묶음(탭) */
 const PICK_GROUPS = [
-  { id: 'style', tab: '스타일', cats: ['watch', 'outfit', 'pcolor', 'brand'] },
-  { id: 'life', tab: '먹고 사기', cats: ['food', 'shop'] },
-  { id: 'tech', tab: '전자·PC', cats: ['egear', 'cpu', 'mb', 'mouse', 'keyboard', 'pccase', 'laptop', 'monitor'] },
-  { id: 'home', tab: '대형가전', cats: ['tv', 'fridge', 'kimchi', 'washer', 'aircon', 'styler', 'dish'] },
-  { id: 'people', tab: '사람', cats: ['ptype', 'pmbti', 'plook'] },
-  { id: 'place', tab: '사는 곳', cats: ['region'] },
+  { id: 'style', tab: '스타일', why: '왜 이 스타일일까', cats: ['watch', 'outfit', 'pcolor', 'brand'] },
+  { id: 'life', tab: '먹고 사기', why: '왜 이걸 먹으라는 걸까', cats: ['food', 'shop'] },
+  { id: 'tech', tab: '전자·PC', why: '왜 이 전자제품, 이 PC일까', cats: ['egear', 'cpu', 'mb', 'mouse', 'keyboard', 'pccase', 'laptop', 'monitor'] },
+  { id: 'home', tab: '대형가전', why: '왜 이 가전일까', cats: ['tv', 'fridge', 'kimchi', 'washer', 'aircon', 'styler', 'dish'] },
+  { id: 'people', tab: '사람', why: '왜 이 사람일까', cats: ['ptype', 'pmbti', 'plook'] },
+  { id: 'place', tab: '사는 곳', why: '왜 이 지역일까', cats: ['region'] },
 ];
 
 /* 퍼스널컬러: 손바닥 피부 톤(밝기, 노란 기)으로 네 계절 중 하나 */
