@@ -349,6 +349,18 @@ body {
 
 .pick .dnw { grid-column: 1 / -1; margin-top: 8px; }
 
+/* 결과 화면: 굿즈는 모두 같은 급으로 */
+.restitle { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(36px, 11vw, 48px); line-height: 1.15; }
+.pick .hero { grid-column: 1 / -1; margin-top: 10px; box-shadow: none; border-width: 2.5px; }
+.pick .chips { margin-top: 8px; }
+.carlink { grid-column: 1 / -1; }
+.carlink .dnw { margin-top: 10px; }
+.whybox { display: grid; gap: 8px; }
+.whybox p { margin: 0; font-size: 14.5px; line-height: 1.6; }
+.why-head { margin: 0; font-family: var(--font-ui); font-weight: 400; font-size: 18px; color: var(--cinnabar); }
+.why-head::before { content: "왜? "; display: none; }
+#grp-car .whybox { padding: 0; }
+
 </style>
 </head>
 <body>
@@ -492,12 +504,8 @@ body {
 
     <!-- ⑤ 결과 -->
     <section id="s-result" class="screen" hidden>
-      <p class="eyebrow"><span class="seal" aria-hidden="true">判讀</span>판독 완료 · 당신의 최애는</p>
-      <h1 id="carName" class="carname"></h1>
-      <p class="chips"><span id="carKind" class="chip"></span><span id="carSync" class="chip chip-red"></span></p>
-      <p id="carTag" class="tagline"></p>
-      <canvas id="heroCanvas" class="hero" role="img"></canvas>
-      <div id="carLink"></div>
+      <p class="eyebrow"><span class="seal" aria-hidden="true">判讀</span>판독 완료</p>
+      <h1 class="restitle">손금은 이미<br>알고 있었다.</h1>
       <p id="profileLine" class="fine left"></p>
 
       <h2 class="h">내 손금 풀이</h2>
@@ -508,35 +516,55 @@ body {
           <ul id="lineList" class="linelist"></ul>
         </div>
       </div>
+      <div id="moreRead" class="card moreread"></div>
+
+      <h2 class="h">내 손톱 풀이</h2>
       <div class="card">
-        <h3 class="read-head">종합 풀이</h3>
-        <ul id="overall" class="linelist overall"></ul>
-      </div>
-      <div class="card">
-        <h3 class="read-head">손톱 풀이</h3>
         <ul id="nailList" class="linelist overall"></ul>
         <p id="nailNote" class="fine left"></p>
       </div>
-      <div id="moreRead" class="card moreread"></div>
 
-      <h2 class="h">4컷 만화로 보는 이유</h2>
+      <h2 class="h">종합 풀이</h2>
+      <div class="card">
+        <ul id="overall" class="linelist overall"></ul>
+      </div>
+
+      <h2 class="h">손금이 골라준 당신과 어울리는 굿즈</h2>
+      <p class="fine left">자동차부터 사는 곳까지 모두 같은 손금으로 골랐어요. 묶음마다 "왜 이걸 골랐는지"를 함께 적어 두었습니다.</p>
+      <nav id="pickNav" class="tabs" aria-label="추천 묶음 바로가기"></nav>
+      <div class="pickgroups">
+        <section id="grp-car" class="pickgroup">
+          <h3 class="pick-head">자동차</h3>
+          <div class="card picks">
+            <div class="pick">
+              <div class="pick-cat">자동차</div>
+              <div>
+                <p id="carName" class="pick-name"></p>
+                <p id="carTag" class="pick-why"></p>
+                <p class="chips"><span id="carKind" class="chip"></span><span id="carSync" class="chip chip-red"></span></p>
+              </div>
+              <canvas id="heroCanvas" class="hero" role="img"></canvas>
+              <div id="carLink" class="carlink"></div>
+            </div>
+          </div>
+          <div class="whybox">
+            <h4 class="why-head">왜 이 차일까</h4>
+            <div id="reasons" class="reasons"></div>
+            <div class="card">
+              <div id="bars" class="bars"></div>
+              <p class="fine legend"><span class="lg lg-me"></span>내 손금 점수 <span class="lg lg-car"></span>이 차의 성격</p>
+            </div>
+          </div>
+        </section>
+        <div id="pickPanels" class="pickgroups"></div>
+      </div>
+
+      <h2 class="h">4컷으로 정리</h2>
       <div class="comic">
         <canvas id="panel1" role="img"></canvas>
         <canvas id="panel2" role="img"></canvas>
         <canvas id="panel3" role="img"></canvas>
         <canvas id="panel4" role="img"></canvas>
-      </div>
-
-      <h2 class="h">자동차 말고도, 손금이 고른 나의 굿즈</h2>
-      <p class="fine left">가장 두드러진 성향을 중심으로, 항목에 따라 두 번째·세 번째 성향까지 보고 골랐어요. 항목마다 근거가 된 성향을 적어 두었습니다.</p>
-      <nav id="pickNav" class="tabs" aria-label="추천 묶음 바로가기"></nav>
-      <div id="pickPanels" class="pickgroups"></div>
-
-      <h2 class="h">왜 이 차일까</h2>
-      <div id="reasons" class="reasons"></div>
-      <div class="card">
-        <div id="bars" class="bars"></div>
-        <p class="fine legend"><span class="lg lg-me"></span>내 손금 점수 <span class="lg lg-car"></span>이 차의 성격</p>
       </div>
 
       <div class="actions">
@@ -1094,12 +1122,12 @@ const PICK_LENS = {
 
 /* 결과 화면의 묶음(탭) */
 const PICK_GROUPS = [
-  { id: 'style', tab: '스타일', cats: ['watch', 'outfit', 'pcolor', 'brand'] },
-  { id: 'life', tab: '먹고 사기', cats: ['food', 'shop'] },
-  { id: 'tech', tab: '전자·PC', cats: ['egear', 'cpu', 'mb', 'mouse', 'keyboard', 'pccase', 'laptop', 'monitor'] },
-  { id: 'home', tab: '대형가전', cats: ['tv', 'fridge', 'kimchi', 'washer', 'aircon', 'styler', 'dish'] },
-  { id: 'people', tab: '사람', cats: ['ptype', 'pmbti', 'plook'] },
-  { id: 'place', tab: '사는 곳', cats: ['region'] },
+  { id: 'style', tab: '스타일', why: '왜 이 스타일일까', cats: ['watch', 'outfit', 'pcolor', 'brand'] },
+  { id: 'life', tab: '먹고 사기', why: '왜 이걸 먹으라는 걸까', cats: ['food', 'shop'] },
+  { id: 'tech', tab: '전자·PC', why: '왜 이 전자제품, 이 PC일까', cats: ['egear', 'cpu', 'mb', 'mouse', 'keyboard', 'pccase', 'laptop', 'monitor'] },
+  { id: 'home', tab: '대형가전', why: '왜 이 가전일까', cats: ['tv', 'fridge', 'kimchi', 'washer', 'aircon', 'styler', 'dish'] },
+  { id: 'people', tab: '사람', why: '왜 이 사람일까', cats: ['ptype', 'pmbti', 'plook'] },
+  { id: 'place', tab: '사는 곳', why: '왜 이 지역일까', cats: ['region'] },
 ];
 
 /* 퍼스널컬러: 손바닥 피부 톤(밝기, 노란 기)으로 네 계절 중 하나 */
@@ -2614,7 +2642,7 @@ const Fortune = (function () {
     const items = {};
     for (const cat of Object.keys(PICKS)) {
       const c = choose(PICKS[cat].options, lens(PICK_LENS[cat] || 1), tier);
-      items[cat] = { cat, label: PICKS[cat].label, name: c.opt.name, why: (c.opt.whyBy && c.opt.whyBy[c.trait]) || c.opt.why, chip: chip(c.trait) };
+      items[cat] = { cat, label: PICKS[cat].label, name: c.opt.name, why: (c.opt.whyBy && c.opt.whyBy[c.trait]) || c.opt.why, chip: chip(c.trait), trait: c.trait };
       if (cat === 'region') {
         items[cat].name = `${c.opt.area === '한국' ? '대한민국' : c.opt.area} · ${c.opt.name}`;
         items[cat].area = c.opt.area;
@@ -2653,7 +2681,7 @@ const Fortune = (function () {
     const me = myMbti(u), lookKey = teen || g === 'u' ? 'n' : g === 'm' ? 'f' : 'm';
     items.ptype = {
       cat: 'ptype', label: teen ? '잘 맞는 친구' : `어울리는 ${who}`, name: PARTNER.type[wid].name,
-      why: `${PARTNER.type[wid].why}. ${heartStyle(res.lines && res.lines.heart)}`, chip: `내 ${chip(wid)}`,
+      why: `${PARTNER.type[wid].why}. ${heartStyle(res.lines && res.lines.heart)}`, chip: `내 ${chip(wid)}`, weak: wid,
     };
     items.pmbti = {
       cat: 'pmbti', label: `${who}의 MBTI`, name: PARTNER.mbti[me].join(' · '),
@@ -2663,7 +2691,8 @@ const Fortune = (function () {
       cat: 'plook', label: teen ? '친구의 인상' : g === 'u' ? '상대의 인상' : '이성의 외모', name: PARTNER.look[wid].name,
       why: PARTNER.look[wid][lookKey], chip: '',
     };
-    const groups = PICK_GROUPS.map((gr) => ({ id: gr.id, tab: gr.tab, items: gr.cats.map((c) => items[c]) }));
+    const groups = PICK_GROUPS.map((gr) => ({ id: gr.id, tab: gr.tab, whyTitle: gr.why, items: gr.cats.map((c) => items[c]) }));
+    for (const gr of groups) gr.whyText = groupWhy(gr, res, me);
     return { groups, items, mbti: me, profile: prof };
   }
 
@@ -2743,6 +2772,47 @@ const Fortune = (function () {
     if (id === 'heart') return `손바닥 폭의 ${pct(l.len)}% · 끝이 ${l.rise >= 0.03 ? '위로 휘어 오름' : l.rise <= -0.02 ? '아래로 내려감' : '곧게 뻗음'} · ${d}`;
     if (id === 'head') return `손바닥 폭의 ${pct(l.len)}% · 기울기 ${Math.round(l.slopeDeg)}° · ${d}`;
     return `손목에서 중지 쪽으로 ${pct(l.len)}% · ${d}`;
+  }
+
+  /* ---------- 묶음마다 "왜 이걸 골랐는지" ---------- */
+  const GROUP_FLAVOR = {
+    style: '옷차림과 소지품은 성향이 가장 먼저 드러나는 곳이라',
+    life: '무엇을 먹고 어디서 장을 보는지에도 성향이 묻어나서',
+    tech: '매일 손에 쥐는 기기와 PC는 쓰는 사람의 습관을 닮아야 오래 아껴 쓰게 되니',
+    home: '대형가전은 한번 들이면 10년을 함께하는 살림이라',
+    people: '사람은 나와 같은 점보다 나에게 없는 점을 채워 줄 때 오래가서',
+    place: '사는 곳은 하루의 리듬을 정하는 곳이라',
+  };
+  /* 성향 하나가 손금 어디에서 나왔는지 한 줄로 */
+  function traitSource(res, id) {
+    const f = features(res.lines), ev = evidence(id, res.lines, f), plus = (res.boost && res.boost[id]) || [];
+    const w = plus.slice(0, 2).join('·'), last = w.charCodeAt(w.length - 1);
+    const ga = last >= 0xAC00 && last <= 0xD7A3 && (last - 0xAC00) % 28 === 0 ? '가' : '이';      // 받침 없으면 '가'
+    return `${ev.short}${plus.length ? `(여기에 ${w}${ga} 더함)` : ''}`;
+  }
+  function groupWhy(gr, res, mbti) {
+    const sc = (id) => res.scores[TRAIT_INDEX[id]], nm = (id) => TRAITS[TRAIT_INDEX[id]].name;
+    if (gr.id === 'people') {
+      const wid = gr.items[0].weak;
+      return [
+        `어울리는 사람은 나의 강점이 아니라 빈 곳을 보고 골랐어요. 여섯 성향 중 ${nm(wid)}(${sc(wid)}점)이 가장 덜 드러나는 손금이라, 그 부분을 자연스럽게 채워 주는 사람이 곁에 있을 때 균형이 맞습니다.`,
+        `MBTI는 손금 성향을 네 글자로 옮긴 ${mbti}를 기준으로, 서로 보완이 잘 된다고 알려진 조합을 골랐어요.`,
+      ];
+    }
+    // 이 묶음 항목들이 근거로 삼은 성향 (많이 쓰인 순)
+    const cnt = {};
+    for (const it of gr.items) if (it.trait) cnt[it.trait] = (cnt[it.trait] || 0) + 1;
+    const ids = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || sc(b) - sc(a)).slice(0, 2);
+    if (!ids.length) return ['손금 전체의 성향을 고르게 보고 골랐어요.'];
+    const t0 = TRAITS[TRAIT_INDEX[ids[0]]];
+    const out = [
+      `${GROUP_FLAVOR[gr.id]}, 이 묶음은 손금에서 두드러진 ${ids.map((id) => `${nm(id)}(${sc(id)}점)`).join('과 ')} 성향을 기준으로 골랐어요.`,
+      ids.map((id) => `${nm(id)} 점수는 ${traitSource(res, id)}에서 나왔습니다.`).join(' '),
+      `${t0.name}이 높은 사람은 ${t0.mean}이 있어, 그 기질을 살려 주고 오래 질리지 않을 것들로 맞췄어요.`,
+    ];
+    if (gr.items.some((it) => it.cat === 'pcolor')) out.push('퍼스널컬러만은 성향이 아니라 사진에 찍힌 손바닥 피부 톤으로 골랐어요.');
+    if (gr.id === 'place') out.push('국내·해외·북한 후보를 모두 놓고 성향이 가장 잘 맞는 곳 하나를 뽑았어요.');
+    return out;
   }
 
   /* ---------- 손금 풀이: 주요선 네 개가 뜻하는 것 ---------- */
@@ -3353,22 +3423,56 @@ const Draw = (function () {
     ctx.fillText('3', 52, P - 50);
   }
 
-  function panel4(ctx, res, car) {
+  /* 굿즈 이름을 컷 안에 들어갈 만큼 짧게: "제조사 · 브랜드 · 제품군" → "제조사 브랜드" */
+  function shortName(it) {
+    if (it.short) return it.short;
+    const p = it.name.split(' · ');
+    return p.length >= 3 ? `${p[0]} ${p[1]}` : p.join(' ');
+  }
+  function panel4(ctx, res, car, ex) {
     sunburst(ctx, 270, 300, 520, 24, PAPER, PAPER_HI);
-    // 이름 띠
+    // 제목 띠
     ctx.save();
-    ctx.translate(270, 70); ctx.rotate(-0.025);
-    rrect(ctx, -236, -50, 472, 100, 14);
+    ctx.translate(270, 56); ctx.rotate(-0.025);
+    rrect(ctx, -170, -32, 340, 64, 14);
     ctx.fillStyle = RED; ctx.fill();
     ctx.strokeStyle = INK; ctx.lineWidth = 6; ctx.stroke();
-    ctx.fillStyle = PAPER_HI; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = font(24, F_COMIC);
-    ctx.fillText('당신의 최애는', 0, -26);
-    ctx.fillStyle = '#FFFFFF';
-    const s = fitFont(ctx, car.name, 430, 52, F_DISPLAY, 30);
-    ctx.font = font(s, F_DISPLAY);
-    ctx.fillText(car.name, 0, 16);
+    ctx.fillStyle = '#FFFFFF'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = font(34, F_DISPLAY);
+    ctx.fillText('당신의 최애는?', 0, 2);
     ctx.restore();
+    if (ex) {
+      // 자동차와 다른 굿즈를 같은 크기의 줄로 나란히
+      const rows = [['자동차', car.name]].concat(['watch', 'brand', 'food', 'egear', 'tv', 'region'].map((k) => [ex.items[k].label.replace('어울리는 ', '').replace('전자기기 브랜드', '전자기기'), shortName(ex.items[k])]));
+      rrect(ctx, 30, 104, 480, 352, 16);
+      ctx.fillStyle = 'rgba(255,248,225,0.94)'; ctx.fill();
+      ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.stroke();
+      drawCar(ctx, car.body, 440, 168, 0.5, car.color);
+      const top = 132, gap = 45;
+      rows.forEach(([k, v], i) => {
+        const y = top + i * gap + 18;
+        ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+        rrect(ctx, 46, y - 16, 94, 32, 8);
+        ctx.fillStyle = i === 0 ? RED : INK; ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = font(fitFont(ctx, k, 84, 20, F_COMIC, 14), F_COMIC);
+        ctx.textAlign = 'center';
+        ctx.fillText(k, 93, y + 1);
+        ctx.textAlign = 'left';
+        ctx.fillStyle = INK;
+        const maxW = i === 0 ? 270 : 350;
+        ctx.font = font(fitFont(ctx, v, maxW, 26, F_COMIC, 15), F_COMIC);
+        ctx.fillText(v, 152, y + 1);
+        if (i < rows.length - 1) {
+          ctx.strokeStyle = 'rgba(26,20,16,0.18)'; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
+          ctx.beginPath(); ctx.moveTo(46, y + gap / 2); ctx.lineTo(494, y + gap / 2); ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      });
+      sparkle(ctx, 500, 96, 18, '#FFFFFF');
+      frame(ctx, 4);
+      return;
+    }
     // 차
     ctx.fillStyle = 'rgba(255,248,225,0.85)';
     ctx.beginPath(); ctx.ellipse(270, 330, 250, 34, 0, 0, Math.PI * 2); ctx.fill();
@@ -3388,11 +3492,11 @@ const Draw = (function () {
     frame(ctx, 4);
   }
 
-  function drawPanel(canvas, n, res) {
+  function drawPanel(canvas, n, res, ex) {
     const car = CARS.find((c) => c.id === res.carId);
     canvas.width = P; canvas.height = P;
     const ctx = canvas.getContext('2d');
-    [panel1, panel2, panel3, panel4][n - 1](ctx, res, car);
+    [panel1, panel2, panel3, panel4][n - 1](ctx, res, car, ex);
   }
 
   /* ---------- 결과 화면 맨 위의 자동차 그림 ---------- */
@@ -4435,11 +4539,12 @@ const App = (function () {
   async function renderResult() {
     const res = ST.result, car = CARS.find((c) => c.id === res.carId);
     el.carName.textContent = car.name;
+    el.carName.className = 'pick-name';
     el.carKind.textContent = car.kind;
     el.carSync.textContent = `싱크로율 ${res.sync}%`;
     el.carTag.textContent = car.tagline;
     el.carLink.textContent = '';
-    el.carLink.append(danawaBtn(DANAWA.car(car.name), '가격·견적 보러 가기', '다나와자동차 · 트림별 가격 확인', true));
+    el.carLink.append(danawaBtn(DANAWA.car(car.name), '다나와자동차 가격·견적 보기', '트림별 가격 · 견적 확인'));
     const ex = Fortune.extras(res);
     ST.extras = ex;
     el.profileLine.textContent = `${profileText(ex.profile)} 기준 · ${ex.profile.hand === 'left' ? '왼손은 타고난 기질을 봅니다.' : '오른손은 살아오며 만든 기질을 봅니다.'}`;
@@ -4454,10 +4559,10 @@ const App = (function () {
       `1컷: 도사가 돋보기로 손바닥을 보며 말한다. "${res.script.p1}"`,
       `2컷: 도사가 손가락을 세우며 말한다. "${res.script.p2}"`,
       `3컷: 도사가 천에 가려진 자동차를 가리키며 말한다. "${res.script.p3}"`,
-      `4컷: ${car.name} 등장. "${res.script.p4}"`,
+      `4컷: 당신의 최애는? ${car.name}, ${['watch', 'brand', 'food', 'tv', 'region'].map((k) => ex.items[k].label + ' ' + (ex.items[k].short || ex.items[k].name)).join(', ')}`,
     ];
     for (let n = 1; n <= 4; n++) {
-      Draw.drawPanel(el['panel' + n], n, res);
+      Draw.drawPanel(el['panel' + n], n, res, ex);
       el['panel' + n].setAttribute('aria-label', alt[n - 1]);
     }
     Draw.drawTrace(el.traceCanvas, ST.lastPhoto, res, !!res.flip);
@@ -4521,10 +4626,18 @@ const App = (function () {
   function renderPicks(ex) {
     el.pickNav.textContent = '';
     el.pickPanels.textContent = '';
+    const carJump = node('button', 'tab', '자동차');
+    carJump.type = 'button';
+    carJump.addEventListener('click', () => $('grp-car').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' }));
+    el.pickNav.append(carJump);
     for (const g of ex.groups) {
       const sec = node('section', 'pickgroup'), card = node('div', 'card picks');
       sec.id = 'grp-' + g.id;
       sec.append(node('h3', 'pick-head', g.tab), card);
+      const whyBox = node('div', 'whybox card');
+      whyBox.append(node('h4', 'why-head', g.whyTitle));
+      for (const t of g.whyText) whyBox.append(node('p', null, t));
+      sec.append(whyBox);
       for (const it of g.items) {
         const row = node('div', 'pick'), body = node('div');
         const why = node('p', 'pick-why', it.why + ' ');
