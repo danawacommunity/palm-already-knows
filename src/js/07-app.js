@@ -275,6 +275,7 @@ const App = (function () {
   }
   function shootLive() {
     const v = el.video;
+    if (ST.busy) return;
     if (!v.videoWidth) { toast('카메라가 아직 준비되지 않았어요. 잠시 후 다시 눌러주세요.'); return; }
     if (ST.step === 'nail') {
       const g = liveBox(), nc = document.createElement('canvas');
@@ -288,7 +289,11 @@ const App = (function () {
     c.width = v.videoWidth; c.height = v.videoHeight;
     c.getContext('2d').drawImage(v, 0, 0);        // 저장은 거울 반전 없이, 실제 모습 그대로
     const gb = liveBox();                         // 찍는 순간 틀이 놓여 있던 자리
-    c.toBlob((blob) => { if (blob) { stopCamera(); setPhoto(URL.createObjectURL(blob), { guide: gb }); } }, 'image/jpeg', 0.95);
+    // 카메라는 끄지 않는다: 손바닥을 바로 판별한 뒤 같은 카메라로 손톱까지 찍는다(권한을 다시 묻지 않게)
+    ST.shotLive = true;
+    ST.busy = true;
+    setHint('손바닥을 확인하는 중…');
+    c.toBlob((blob) => { if (blob) setPhoto(URL.createObjectURL(blob), { guide: gb }); else ST.busy = false; }, 'image/jpeg', 0.95);
   }
 
   /* 사진 받기 → 손바닥을 자동으로 찾아 바로 판독 */
@@ -304,22 +309,60 @@ const App = (function () {
       ST.photoFlip = null;
       if (opt && opt.adjust) enterAdjust(); else autoRead(!opt || opt.allowRotate !== false, opt && opt.guide);
     };
-    img.onerror = () => { URL.revokeObjectURL(url); toast('사진을 열 수 없어요. 다른 사진을 골라주세요.'); };
+    img.onerror = () => { ST.busy = false; URL.revokeObjectURL(url); toast('사진을 열 수 없어요. 다른 사진을 골라주세요.'); };
     img.src = url;
   }
   function loadPhoto(file) {
     if (!file) return;
     if (ST.step === 'nail') { loadNail(file); return; }
+    ST.shotLive = false;
     setPhoto(URL.createObjectURL(file));
   }
 
   /* ---------- 손톱 ---------- */
   /* 손바닥 사진을 받은 다음: 손톱을 아직 안 찍었으면 손톱 단계로, 찍었거나 건너뛰었으면 판독으로 */
+  /* 손바닥 사진을 받으면 그 자리에서 판별한다.
+   *   잘 찍혔으면 "잘 찍혔어요"라고 알리고 손톱 단계로, 아니면 이유를 알리고 손바닥을 다시 찍게 한다. */
   function afterPalm(preFail) {
-    if (preFail || ST.nail !== undefined) { runScan(preFail); return; }
+    ST.busy = false;
+    let a = null;
+    if (!preFail) { try { a = PalmReader.analyze(ST.hand, { palmOnly: ST.palmOnly }); } catch (e) { a = { ok: false, reason: 'faint', quality: {} }; } }
+    ST.analysis = a;
+    const live = !!ST.stream && ST.screen === 'capture';
+    if (preFail || !a.ok) {
+      if (live && ST.shotLive && ST.mode === 'live') {      // 카메라 화면에 그대로 머물며 다시 찍기
+        const r = RETAKE[preFail || a.reason] || RETAKE.faint;
+        stopAlign();
+        ST.guideState = 'warn'; paintGuide();
+        setHint('다시 찍어주세요 · ' + r.title);
+        toast(r.tip);
+        setTimeout(() => { if (ST.screen === 'capture' && ST.mode === 'live' && ST.step === 'palm' && ST.stream) startAlign(); }, 3000);
+        return;
+      }
+      runScan(preFail || null);
+      return;
+    }
+    if (ST.nail !== undefined) { runScan(null); return; }
+    if (live) {
+      if (ST.mode !== 'live') setMode('live');
+      stopAlign();
+      ST.guideState = 'ok'; paintGuide();
+      setHint('손바닥이 잘 찍혔어요! 다음은 손톱이에요', true);
+      ST.busy = true;
+      setTimeout(() => {
+        ST.busy = false;
+        if (ST.screen !== 'capture') return;
+        ST.step = 'nail';
+        setMode('live');
+        layoutStage();
+        startAlign();
+      }, 1500);
+      return;
+    }
     ST.step = 'nail';
     if (ST.screen !== 'capture') show('capture');
     setMode('choose');
+    toast('손바닥이 잘 찍혔어요! 이번엔 엄지 손톱을 찍어주세요.');
     if (canLive()) startCamera();
   }
   function readNail(canvas) {
@@ -526,6 +569,7 @@ const App = (function () {
     await wait(90);
     let a;
     if (preFail) a = { ok: false, reason: preFail, quality: {} };
+    else if (ST.analysis) a = ST.analysis;      // 찍은 직후에 이미 판별해 둔 결과
     else { try { a = PalmReader.analyze(ST.hand, { palmOnly: ST.palmOnly }); } catch (e) { a = { ok: false, reason: 'faint', quality: {} }; } }
     if (a.ok) a.nail = ST.nail || null;
     const failAt = a.ok ? -1 : ({ no_palm: 0, no_hand: 0, misaligned: 0, thumb: 0, background: 0, too_dark: 1, too_bright: 1, faint: 2 })[a.reason];
@@ -695,7 +739,18 @@ const App = (function () {
   /* 주요선 말고 더 읽은 것들 */
   function renderReading(res) {
     el.moreRead.textContent = '';
-    const secs = Fortune.reading(res);
+    const all = Fortune.reading(res), nailSec = all.find((s) => s.title === '손톱'), secs = all.filter((s) => s !== nailSec);
+    // 손톱 풀이는 따로 한 장으로
+    el.nailList.textContent = '';
+    for (const r of (nailSec ? nailSec.rows : [{ tag: '손톱', color: '#1A1410', text: '손톱 사진을 찍지 않아 풀이가 없습니다. "다시 하기"에서 엄지 손톱까지 찍으면 모양·빛깔·반달을 풀어 드립니다.' }])) {
+      const li = node('li'), tag = node('span', 'tag', r.tag), txt = node('span', null, r.text + ' ');
+      tag.style.background = r.color;
+      for (const t of r.plus || []) txt.append(node('span', 'plus-chip', '+' + t));
+      li.append(tag, txt);
+      el.nailList.append(li);
+    }
+    el.nailNote.textContent = nailSec ? nailSec.note : '';
+    el.nailNote.hidden = !nailSec;
     el.moreRead.hidden = !secs.length;
     for (const sec of secs) {
       el.moreRead.append(node('h3', 'read-head', sec.title));
@@ -846,7 +901,7 @@ const App = (function () {
       'stage', 'video', 'photo', 'guide', 'hint',
       'liveControls', 'photoControls', 'btnShoot', 'btnSwitch', 'zoom', 'btnUsePhoto', 'btnRotate', 'btnFlipHand', 'filePick', 'fileShoot', 'btnSetupBack', 'btnSetupGo', 'setupNote',
       'scanTitle', 'scanCanvas', 'scanSteps', 'retake', 'retakeTitle', 'retakeTip', 'btnRetake', 'btnAdjust',
-      'carName', 'carKind', 'carSync', 'carTag', 'heroCanvas', 'profileLine', 'pickNav', 'pickPanels', 'panel1', 'panel2', 'panel3', 'panel4', 'traceCanvas', 'lineList', 'overall', 'moreRead', 'reasons', 'bars',
+      'carName', 'carKind', 'carSync', 'carTag', 'heroCanvas', 'profileLine', 'pickNav', 'pickPanels', 'panel1', 'panel2', 'panel3', 'panel4', 'traceCanvas', 'lineList', 'overall', 'nailList', 'nailNote', 'moreRead', 'reasons', 'bars',
       'btnShare', 'btnSave', 'btnCopy', 'btnAgain', 'againLine',
       'gate', 'gateClose', 'gateLinkBox', 'gateLink', 'gateCopy', 'gateShare', 'gateStatus', 'gateGo', 'gatePreview', 'gateSim', 'toast']) el[id] = $(id);
     el.scanStage = el.scanCanvas.parentElement;
