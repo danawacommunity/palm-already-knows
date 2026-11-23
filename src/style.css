@@ -308,3 +308,10 @@ body {
   #s-intro .title { font-size: clamp(40px, 5.6dvh, 54px); }
   #s-intro .introart { height: 22dvh; }
 }
+
+/* 손금 풀이 */
+.line-mean { margin: 0; }
+.line-measure { margin: 3px 0 0; font-size: 12.5px; opacity: .7; }
+.overall .tag { background: var(--ink); }
+.trace { grid-template-columns: 1fr; }
+.trace canvas { width: min(100%, 230px); justify-self: center; }
