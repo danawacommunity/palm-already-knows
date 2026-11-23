@@ -156,12 +156,8 @@
 
     <!-- ⑤ 결과 -->
     <section id="s-result" class="screen" hidden>
-      <p class="eyebrow"><span class="seal" aria-hidden="true">判讀</span>판독 완료 · 당신의 최애는</p>
-      <h1 id="carName" class="carname"></h1>
-      <p class="chips"><span id="carKind" class="chip"></span><span id="carSync" class="chip chip-red"></span></p>
-      <p id="carTag" class="tagline"></p>
-      <canvas id="heroCanvas" class="hero" role="img"></canvas>
-      <div id="carLink"></div>
+      <p class="eyebrow"><span class="seal" aria-hidden="true">判讀</span>판독 완료</p>
+      <h1 class="restitle">손금은 이미<br>알고 있었다.</h1>
       <p id="profileLine" class="fine left"></p>
 
       <h2 class="h">내 손금 풀이</h2>
@@ -172,35 +168,55 @@
           <ul id="lineList" class="linelist"></ul>
         </div>
       </div>
+      <div id="moreRead" class="card moreread"></div>
+
+      <h2 class="h">내 손톱 풀이</h2>
       <div class="card">
-        <h3 class="read-head">종합 풀이</h3>
-        <ul id="overall" class="linelist overall"></ul>
-      </div>
-      <div class="card">
-        <h3 class="read-head">손톱 풀이</h3>
         <ul id="nailList" class="linelist overall"></ul>
         <p id="nailNote" class="fine left"></p>
       </div>
-      <div id="moreRead" class="card moreread"></div>
 
-      <h2 class="h">4컷 만화로 보는 이유</h2>
+      <h2 class="h">종합 풀이</h2>
+      <div class="card">
+        <ul id="overall" class="linelist overall"></ul>
+      </div>
+
+      <h2 class="h">손금이 골라준 당신과 어울리는 굿즈</h2>
+      <p class="fine left">자동차부터 사는 곳까지 모두 같은 손금으로 골랐어요. 묶음마다 "왜 이걸 골랐는지"를 함께 적어 두었습니다.</p>
+      <nav id="pickNav" class="tabs" aria-label="추천 묶음 바로가기"></nav>
+      <div class="pickgroups">
+        <section id="grp-car" class="pickgroup">
+          <h3 class="pick-head">자동차</h3>
+          <div class="card picks">
+            <div class="pick">
+              <div class="pick-cat">자동차</div>
+              <div>
+                <p id="carName" class="pick-name"></p>
+                <p id="carTag" class="pick-why"></p>
+                <p class="chips"><span id="carKind" class="chip"></span><span id="carSync" class="chip chip-red"></span></p>
+              </div>
+              <canvas id="heroCanvas" class="hero" role="img"></canvas>
+              <div id="carLink" class="carlink"></div>
+            </div>
+          </div>
+          <div class="whybox">
+            <h4 class="why-head">왜 이 차일까</h4>
+            <div id="reasons" class="reasons"></div>
+            <div class="card">
+              <div id="bars" class="bars"></div>
+              <p class="fine legend"><span class="lg lg-me"></span>내 손금 점수 <span class="lg lg-car"></span>이 차의 성격</p>
+            </div>
+          </div>
+        </section>
+        <div id="pickPanels" class="pickgroups"></div>
+      </div>
+
+      <h2 class="h">4컷으로 정리</h2>
       <div class="comic">
         <canvas id="panel1" role="img"></canvas>
         <canvas id="panel2" role="img"></canvas>
         <canvas id="panel3" role="img"></canvas>
         <canvas id="panel4" role="img"></canvas>
-      </div>
-
-      <h2 class="h">자동차 말고도, 손금이 고른 나의 굿즈</h2>
-      <p class="fine left">가장 두드러진 성향을 중심으로, 항목에 따라 두 번째·세 번째 성향까지 보고 골랐어요. 항목마다 근거가 된 성향을 적어 두었습니다.</p>
-      <nav id="pickNav" class="tabs" aria-label="추천 묶음 바로가기"></nav>
-      <div id="pickPanels" class="pickgroups"></div>
-
-      <h2 class="h">왜 이 차일까</h2>
-      <div id="reasons" class="reasons"></div>
-      <div class="card">
-        <div id="bars" class="bars"></div>
-        <p class="fine legend"><span class="lg lg-me"></span>내 손금 점수 <span class="lg lg-car"></span>이 차의 성격</p>
       </div>
 
       <div class="actions">

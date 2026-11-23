@@ -334,3 +334,15 @@ body {
 .dnw-big .dnw-sub { color: #fff; opacity: .9; }
 
 .pick .dnw { grid-column: 1 / -1; margin-top: 8px; }
+
+/* 결과 화면: 굿즈는 모두 같은 급으로 */
+.restitle { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(36px, 11vw, 48px); line-height: 1.15; }
+.pick .hero { grid-column: 1 / -1; margin-top: 10px; box-shadow: none; border-width: 2.5px; }
+.pick .chips { margin-top: 8px; }
+.carlink { grid-column: 1 / -1; }
+.carlink .dnw { margin-top: 10px; }
+.whybox { display: grid; gap: 8px; }
+.whybox p { margin: 0; font-size: 14.5px; line-height: 1.6; }
+.why-head { margin: 0; font-family: var(--font-ui); font-weight: 400; font-size: 18px; color: var(--cinnabar); }
+.why-head::before { content: "왜? "; display: none; }
+#grp-car .whybox { padding: 0; }
