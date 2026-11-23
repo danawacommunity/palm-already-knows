@@ -346,3 +346,6 @@ body {
 .why-head { margin: 0; font-family: var(--font-ui); font-weight: 400; font-size: 18px; color: var(--cinnabar); }
 .why-head::before { content: "왜? "; display: none; }
 #grp-car .whybox { padding: 0; }
+
+.scansteps li.skip { opacity: .55; text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.scansteps li.nailstep.on::before { background: #0E6E66; }
