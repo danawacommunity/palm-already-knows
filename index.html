@@ -330,6 +330,25 @@ body {
 .trace { grid-template-columns: 1fr; }
 .trace canvas { width: min(100%, 230px); justify-self: center; }
 
+/* 다나와 바로가기 버튼 */
+.dnw {
+  display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "logo main arrow" "logo sub arrow";
+  align-items: center; column-gap: 10px; margin-top: 10px; padding: 8px 12px; text-decoration: none;
+  background: var(--rice); color: var(--ink); border: 2.5px solid var(--ink); border-radius: 12px; box-shadow: 3px 3px 0 var(--ink);
+  transition: transform .08s, box-shadow .08s;
+}
+.dnw:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.dnw-logo { grid-area: logo; padding: 3px 7px; border-radius: 6px; background: #1D5FE6; color: #fff; font: 700 12px/1.2 Arial, sans-serif; letter-spacing: -.2px; }
+.dnw b { grid-area: main; font-family: var(--font-ui); font-weight: 400; font-size: 16px; line-height: 1.25; color: #1D5FE6; }
+.dnw-sub { grid-area: sub; font-size: 12px; line-height: 1.3; opacity: .75; }
+.dnw-arrow { grid-area: arrow; font-family: var(--font-ui); font-size: 20px; color: #1D5FE6; }
+.dnw-big { background: #1D5FE6; border-color: var(--ink); padding: 12px 14px; }
+.dnw-big .dnw-logo { background: #fff; color: #1D5FE6; }
+.dnw-big b, .dnw-big .dnw-arrow { color: #fff; font-size: 18px; }
+.dnw-big .dnw-sub { color: #fff; opacity: .9; }
+
+.pick .dnw { grid-column: 1 / -1; margin-top: 8px; }
+
 </style>
 </head>
 <body>
@@ -478,6 +497,7 @@ body {
       <p class="chips"><span id="carKind" class="chip"></span><span id="carSync" class="chip chip-red"></span></p>
       <p id="carTag" class="tagline"></p>
       <canvas id="heroCanvas" class="hero" role="img"></canvas>
+      <div id="carLink"></div>
       <p id="profileLine" class="fine left"></p>
 
       <h2 class="h">내 손금 풀이</h2>
@@ -1123,6 +1143,37 @@ const PROFILE_LABEL = {
   gender: { m: '남자', f: '여자', u: '성별 모름' },
   age: { 10: '10대', 20: '20대', 30: '30대', 40: '40대', 50: '50대', 60: '60대 이상' },
 };
+/* 다나와 바로가기: 추천 항목 이름으로 다나와(또는 다나와자동차) 검색 주소를 만든다 */
+const DANAWA = (function () {
+  // 항목마다 검색어 끝에 붙일 품목 이름 (이미 들어 있으면 붙이지 않음)
+  const WORD = { tv: 'TV', fridge: '냉장고', kimchi: '김치냉장고', washer: '', aircon: '에어컨', styler: '', dish: '식기세척기', monitor: '모니터', mb: '메인보드', egear: '', watch: '시계' };
+  // 이름의 세 번째 조각이 "실제 제품 이름"인 항목 (나머지는 세 번째 조각이 설명이라 빼고 찾는다)
+  const PRODUCT3 = { cpu: 1, mouse: 1, keyboard: 1, pccase: 1, laptop: 1 };
+  const SHOP = { watch: 1, egear: 1, cpu: 1, mb: 1, mouse: 1, keyboard: 1, pccase: 1, laptop: 1, monitor: 1, tv: 1, fridge: 1, kimchi: 1, washer: 1, aircon: 1, styler: 1, dish: 1, brand: 1, food: 1 };
+  const clean = (s) => s.replace(/\([^)]*\)/g, ' ').replace(/(^|\s)시리즈(?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim();
+  // 이름만으로는 검색이 잘 안 되는 항목은 검색어를 직접 정해 둔다
+  const FIX = { 'AMD · 라이젠 · 내장 그래픽 G 시리즈': '라이젠 G 시리즈', '세이코 · 세이코 5 스포츠': '세이코5 스포츠', '그랜드 세이코 · 헤리티지 컬렉션': '그랜드세이코', '삼성전자 · 더 프리스타일 · 휴대용 프로젝터': '삼성전자 더 프리스타일', '쿨러마스터 · 마스터박스 · NR200P': 'NR200P' };
+  const dedupe = (q) => q.split(' ').filter((w, i, a) => a.indexOf(w) === i).join(' ');
+  function query(cat, name, override) {
+    if (override) return override;
+    if (FIX[name]) return FIX[name];
+    if (cat === 'food') return clean(name.split('·')[0]);
+    const p = name.split(' · ').map(clean);
+    let q;
+    if (cat === 'cpu') q = p[2] || p.join(' ');
+    else if (p.length >= 3) q = PRODUCT3[cat] ? `${p[0]} ${p[2].includes(p[1]) ? '' : p[1]} ${p[2]}` : `${p[0]} ${p[1]}`;
+    else q = p.join(' ');
+    const w = WORD[cat];
+    if (w && !q.includes(w)) q += ' ' + w;
+    return dedupe(q.replace(/\s+/g, ' ').trim());
+  }
+  return {
+    has: (cat) => !!SHOP[cat],
+    product: (cat, name, override) => 'https://search.danawa.com/dsearch.php?query=' + encodeURIComponent(query(cat, name, override)),
+    car: (name) => 'https://auto.danawa.com/search/?q=' + encodeURIComponent(name),
+    query,
+  };
+})();
 
 'use strict';
 /* ============================================================
@@ -4387,6 +4438,8 @@ const App = (function () {
     el.carKind.textContent = car.kind;
     el.carSync.textContent = `싱크로율 ${res.sync}%`;
     el.carTag.textContent = car.tagline;
+    el.carLink.textContent = '';
+    el.carLink.append(danawaBtn(DANAWA.car(car.name), '가격·견적 보러 가기', '다나와자동차 · 트림별 가격 확인', true));
     const ex = Fortune.extras(res);
     ST.extras = ex;
     el.profileLine.textContent = `${profileText(ex.profile)} 기준 · ${ex.profile.hand === 'left' ? '왼손은 타고난 기질을 봅니다.' : '오른손은 살아오며 만든 기질을 봅니다.'}`;
@@ -4458,6 +4511,13 @@ const App = (function () {
     makeCard();
   }
   /* 자동차 말고 함께 추천하는 것들: 묶음마다 제목을 달아 한 번에 모두 보여 준다 */
+  /* 다나와로 가는 버튼 (새 창) */
+  function danawaBtn(href, main, sub, big) {
+    const a = node('a', 'dnw' + (big ? ' dnw-big' : ''));
+    a.href = href; a.target = '_blank'; a.rel = 'noopener';
+    a.append(node('span', 'dnw-logo', 'danawa'), node('b', null, main), node('span', 'dnw-sub', sub), node('span', 'dnw-arrow', '→'));
+    return a;
+  }
   function renderPicks(ex) {
     el.pickNav.textContent = '';
     el.pickPanels.textContent = '';
@@ -4492,6 +4552,12 @@ const App = (function () {
           body.append(box);
         }
         row.append(node('div', 'pick-cat', it.label), body);
+        if (DANAWA.has(it.cat)) {
+          const food = it.cat === 'food', brand = it.cat === 'brand' || it.cat === 'egear';
+          row.append(danawaBtn(DANAWA.product(it.cat, it.name),
+            food ? '다나와에서 장보기' : brand ? '다나와에서 상품 보기' : '다나와 최저가 보기',
+            food ? '간편식·재료 최저가' : brand ? '상품정보 확인' : '가격비교 · 상품정보 확인'));
+        }
         card.append(row);
       }
       el.pickPanels.append(sec);
@@ -4667,7 +4733,7 @@ const App = (function () {
       'stage', 'video', 'photo', 'guide', 'hint',
       'liveControls', 'photoControls', 'btnShoot', 'btnSwitch', 'zoom', 'btnUsePhoto', 'btnRotate', 'btnFlipHand', 'filePick', 'fileShoot', 'btnSetupBack', 'btnSetupGo', 'setupNote',
       'scanTitle', 'scanCanvas', 'scanSteps', 'retake', 'retakeTitle', 'retakeTip', 'btnRetake', 'btnAdjust',
-      'carName', 'carKind', 'carSync', 'carTag', 'heroCanvas', 'profileLine', 'pickNav', 'pickPanels', 'panel1', 'panel2', 'panel3', 'panel4', 'traceCanvas', 'lineList', 'overall', 'nailList', 'nailNote', 'moreRead', 'reasons', 'bars',
+      'carName', 'carKind', 'carSync', 'carTag', 'carLink', 'heroCanvas', 'profileLine', 'pickNav', 'pickPanels', 'panel1', 'panel2', 'panel3', 'panel4', 'traceCanvas', 'lineList', 'overall', 'nailList', 'nailNote', 'moreRead', 'reasons', 'bars',
       'btnShare', 'btnSave', 'btnCopy', 'btnAgain', 'againLine',
       'gate', 'gateClose', 'gateLinkBox', 'gateLink', 'gateCopy', 'gateShare', 'gateStatus', 'gateGo', 'gatePreview', 'gateSim', 'toast']) el[id] = $(id);
     el.scanStage = el.scanCanvas.parentElement;
